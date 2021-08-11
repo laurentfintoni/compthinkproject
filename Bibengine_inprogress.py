@@ -3,6 +3,7 @@
 import pandas as pd
 import csv
 import re
+import pprint #to make things pretty because life is beautiful 
 
 #SET THE FILE FOR YOUR SAMPLE DATA 
 citations_file_path = '/Users/laurentfintoni/Desktop/University/COURSE DOCS/YEAR 1/Q1/COMPUTATIONAL THINKING/Project/citations_sample.csv'
@@ -10,18 +11,18 @@ citations_file_path = '/Users/laurentfintoni/Desktop/University/COURSE DOCS/YEAR
 #FUNCTION 1 PROCESS CITATIONS: 2 OPTIONS, ONE W/ CSV + DICT, ONE WITH PANDAS, COMMENT OUT THE ONE YOU DONT WANT TO USE OTHERWISE IT WILL BREAK BECAUSE THEY HAVE SAME NAME 
 
 #Dictionary version
-""" def process_citations(citations_file_path):
+def process_citations(citations_file_path):
     matrix = []
     with open(citations_file_path, mode='r') as file:
         csvFile = csv.DictReader(file)
         for row in csvFile:
             matrix.append(row)
-        return matrix   """
+        return matrix 
 
-#Pandas version w/ parse-dates
+""" #Pandas version w/ parse-dates
 def process_citations(citations_file_path):
     citationpd = pd.read_csv(citations_file_path, header=0, parse_dates=['creation']) #header sets column names, parsedates converts to singular date format 
-    return citationpd
+    return citationpd """
 
 #SET A DATA VARIABLE THAT PROCESSES THE SAMPLE 
 data = process_citations(citations_file_path)
@@ -49,38 +50,38 @@ data = process_citations(citations_file_path)
 #This is a working dictionary version 
 
 def do_compute_impact_factor(data, dois, year):
-    if year == int(year):
-        return 'you damn fool'
-    if len(dois) == 0:
-        return 'still a fool'
-    citations_count = 0
-    for row in data:
-        for i in dois:
-            if i in row["cited"] and year in row["creation"]:
+    if type(year) is not str: #return error if year isn't a string 
+        return 'The year input must be a string \U0001F645.' 
+    if len(dois) == 0: #return error if set is empty 
+        return 'There are no input DOIS \U0001F645.'
+    citations_count = 0 #create a variable to count citations 
+    for row in data: #look at all dict instances in list 
+        for i in dois: #look at the DOIS in input 
+            if i in row["cited"] and year in row["creation"]: #if a DOI in input and the year match in the respective columns add a count
                 citations_count +=1
-    if citations_count == 0:
-        return 'oopsie'
-    docs_published = 0
-    year_int = int(year)
-    year_1 = str(year_int - 1)
+    if citations_count == 0: #return error if counts are empty  
+        return 'Looks like there are no citations \U0001F622.'
+    docs_published = 0 #create a variable to count published docs 
+    year_int = int(year) #change the year input to an integer so we can change it 
+    year_1 = str(year_int - 1) #change the year integer back into a string minus 1 and 2 
     year_2 = str(year_int - 2)        
-    for row in data:
+    for row in data: #same as above but this time we look for matches in other columns 
         for i in dois:       
             if i in row["citing"] and year_1 in row["creation"]:
                 docs_published +=1
             if i in row["citing"] and year_2 in row["creation"]:
                 docs_published +=1
-    if docs_published == 0:
-        return 'nah bra'
+    if docs_published == 0: #return error if counts are empty, also avoid ZeroDivisionError 
+        return 'Looks like there are no published documents in previous two years to compute IF with \U0001F622.'
     else: 
-        impact_factor = citations_count / docs_published
-        return citations_count, docs_published, impact_factor
+        impact_factor = citations_count / docs_published #Do the thing! 
+        return (f'There were {citations_count} citations for all dois in {year}, {docs_published} documents published in the previous two years, and the impact factor is {impact_factor}.') #use formatted string literal to make the result pretty 
 
 #A variable with a set of test DOIS for impact factor 
 test_DOIS = {'10.1016/s0140-6736(97)11096-0', '10.1097/nmc.0000000000000337', '10.3389/fmars.2018.00106', '10.1007/978-3-319-94694-8_26', '10.1080/13590840020013248'}
 
 #You can uncomment this print call and change the years and see the results (works for 2018, 19, 20)
-#print(do_compute_impact_factor(data, test_DOIS, '2010'))
+#print(do_compute_impact_factor(data, test_DOIS, 2010))
 
 #FUNCTION 3 (ENRICA)
 
@@ -162,21 +163,22 @@ print(do_get_citation_network(data, '2018', '2020')) """
 #This is a working version w/ dictionary, needs: constrain string input to 2 numbers, dot, 4 numbers using regex 
 
 def do_search_by_prefix(data, prefix, is_citing):
-    if type(prefix) is not str: 
-        return 'oopsie'
-    if type(is_citing) is not bool:
-        return 'oooooopsie'
-    result = []
-    if is_citing:
+    if type(prefix) is not str: #return error is prefix is not a string 
+        return 'The prefix must be a string \U0001F913.'
+    if type(is_citing) is not bool: #return error is citing option is not boolean 
+        return 'We need a boolean option \U0001F913.'
+    result = [] #create an empty list for the results 
+    if is_citing: #select the column to do search on based on boolean input 
         col = 'citing'
     else:
         col = 'cited'
-    for row in data:
+    for row in data: #search for the prefix in the relevant column of each dict entry and append them to result 
         if prefix in row[col]:
             result.append(row)
-    return result
+    pretty_result = pprint.pformat(result)
+    return (f'These are the DOIS in {col} that match your prefix: \n {pretty_result}')
 
-#print(do_search_by_prefix(data, '10.1177', True))
+#print(do_search_by_prefix(data, 10, True))
 
 #FUNCTION 8 (EVERYONE)
 
