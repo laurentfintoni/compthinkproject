@@ -27,6 +27,25 @@ def process_citations(citations_file_path):
 #SET A DATA VARIABLE THAT PROCESSES THE SAMPLE 
 data = process_citations(citations_file_path)
 
+#ANCILLARY FUNCTION TO MANAGE DATE AND TIMESPAN:
+
+"""#This is an Enrica woring version of functions to transform "creation string" in a normalized datetime object and to compute differences between date and timedelta:
+#to be improved maybe with regex for YYYY or YYYY-MM creation strings
+#to be completed with extraction of year and transform of it in integer for other purposes#to be completed with corret parsing of ISO duration from 'P0Y5M15D' to (years=0, months=5, days=15)
+#or by computing the total number of days and using timedelta(days=50000)"""
+
+from datetime import date, datetime, timedelta
+import dateutil.relative
+def get_n_date_from_created(created):
+    citing_n_date = datetime.strptime(created, '%Y-%m-%d')
+    return citing_n_date
+
+    def get_cited_date(created):
+    citing_n_date = datetime.strptime(created, '%Y-%m-%d')
+    deltaobj = dateutil.relativedelta.relativedelta(years=1, months=1, days=1)
+    cited_n_date = citing_n_date - deltaobj
+    return cited_n_date
+
 #FUNCTION 2 
 
 #data: the data returned by process_citations
@@ -35,7 +54,7 @@ data = process_citations(citations_file_path)
 #It returns a number which is the result of the computation of the Impact Factor (IF) for such documents.
 #The IF of a set of documents dois on a year year is computed by counting the number of citations all
 #the documents in dois have received in year year, and then dividing such a value by the number of
-#documents in dois published in the previous two years (i.e. in year-1 and year-2)
+#documents in dois published in the previous two years (i.e. in year-1 and year-2)"""
 
 #This is an unfinished Pandas version
 
@@ -88,9 +107,7 @@ test_DOIS = {'10.1016/s0140-6736(97)11096-0', '10.1097/nmc.0000000000000337', '1
 #data:the data returned by process_citations
 #doi1: the DOI string of the first article
 #doi2: the DOI string of the second article
-#It returns an integer defining how many times the two input documents are cited
-#together by other documents.
-
+#It returns an integer defining how many times the two input documents are cited together by other documents.
 
 #This is an unfinished version Laurent started working on, we can delete later but keeping in case it's useful, it's like half the function 
 """ def do_get_co_citations(data, doi1, doi2):
@@ -106,6 +123,16 @@ test_DOIS = {'10.1016/s0140-6736(97)11096-0', '10.1097/nmc.0000000000000337', '1
     return citations_count, citation_dict
 print(do_get_co_citations(data, '10.1016/s0140-6736(97)11096-0', '10.5993/ajhb.29.1.7')) """
 
+#This is an Enrica woking dictionary version using do_filter_by_value function:
+def do_get_co_citations(data, doi1, doi2):
+    doi1sublist = do_filter_by_value(data, doi1, 'cited')
+    doi2sublist = do_filter_by_value(data, doi2, 'cited')
+    co_citations = 0
+    for doiA in doi1sublist:
+        for doiB in doi2sublist:
+            if doiA['citing'] == doiB['citing']:
+                co_citations += 1
+    return co_citations    # It returns an integer defining how many times the two input documents are cited together by other documents.
 
 #FUNCTION 4 (ENRICA)
 
@@ -115,6 +142,18 @@ print(do_get_co_citations(data, '10.1016/s0140-6736(97)11096-0', '10.5993/ajhb.2
 #It returns an integer defining how many times the two input documents cite both the same document.
 
 #def do_get_bibliographic_coupling(data, doi1, doi2)
+#This is an Enrica working dictionaryversion using do_filter_by_value function; 
+#maybe it could be more economic for the code (?) writing just one different function to be recalled with the different value of cited VS citing:
+
+def do_get_bibliographic_coupling(data, doi1, doi2):
+    doi1sublist = do_filter_by_value(data, doi1, 'citing')
+    doi2sublist = do_filter_by_value(data, doi2, 'citing')
+    bibliographic_coupling = 0
+    for doiA in doi1sublist:
+        for doiB in doi2sublist:
+            if doiA['cited'] == doiB['cited']:
+                bibliographic_coupling += 1
+    return bibliographic_coupling
 
 #FUNCTION 5 (CAMILLA)
 
@@ -142,7 +181,7 @@ print(do_get_co_citations(data, '10.1016/s0140-6736(97)11096-0', '10.5993/ajhb.2
 print(do_get_citation_network(data, '2018', '2020')) """
 
 
-#FUNCTION 6 (ENRICA)
+#FUNCTION 6 (CAMILLA)
 
 #data: the data returned by process_citations
 #g1: the first graph to consider
@@ -199,7 +238,7 @@ def do_search_by_prefix(data, prefix, is_citing):
 
 #def do_search(data, query, field)
 
-#FUNCTION 9 (EVERYONE)
+#FUNCTION 9 (EVERYONE>ENRICA)
 
 #data: the data returned by process_citations or by other search/filter activities
 #query: a string defining the query to do on the data
@@ -215,3 +254,12 @@ def do_search_by_prefix(data, prefix, is_citing):
 #that contain world
 
 #def do_filter_by_value(data, query, field) 
+#This is a working version on data dictionary; used for coupling and co-citation
+
+def do_filter_by_value(data, query, field):
+    subcollection = []
+    for row in data:
+        #verify if it is necessary to convert every field value in string and if we can have to add a pre-lowercase 
+        if row[field] == query:
+	        subcollection.append(row)
+    return subcollection
