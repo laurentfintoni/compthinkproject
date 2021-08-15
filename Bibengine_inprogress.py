@@ -29,22 +29,69 @@ data = process_citations(citations_file_path)
 
 #ANCILLARY FUNCTION TO MANAGE DATE AND TIMESPAN:
 
-"""#This is an Enrica woring version of functions to transform "creation string" in a normalized datetime object and to compute differences between date and timedelta:
-#to be improved maybe with regex for YYYY or YYYY-MM creation strings
-#to be completed with extraction of year and transform of it in integer for other purposes#to be completed with corret parsing of ISO duration from 'P0Y5M15D' to (years=0, months=5, days=15)
-#or by computing the total number of days and using timedelta(days=50000)"""
+"""#This is an Enrica woring version of functions to transform "creation string" in a normalized datetime object and compute differences between date and timedelta:
+#already able to manage YYYY-MM-DD, YYYY or YYYY-MM creation strings
+#already completed with corret parsing of ISO duration from 'P0Y5M15D' to (years=0, months=5, days=15): maybe possible to do it more elegant without repetition.
+#I used pasing in y, m and d beacuse it was easier for me than transform on the overall days
+#You find a lot of print function to see intermediated steps
+"""
+import re
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
-from datetime import date, datetime, timedelta
-import dateutil.relative
-def get_n_date_from_created(created):
+def get_cited_date(created, timespan):
+    while len(created) < 10:
+        created = created + '-01'
+    print(created)
     citing_n_date = datetime.strptime(created, '%Y-%m-%d')
-    return citing_n_date
+    print(citing_n_date)
+    timespan_n = (re.split('[a-zA-Z]', timespan, 4)[1:-1])
+    print(timespan_n)
+    if len(timespan_n) == 1:
+        a_n = int(timespan_n[0])
+        delta_n = relativedelta(years=a_n)
+    if len(timespan_n) == 2:
+        a_n = int(timespan_n[0])
+        m_n = int(timespan_n[1])
+        delta_n = relativedelta(years=a_n, months=m_n)
+    if len(timespan_n) == 3:
+        a_n = int(timespan_n[0])
+        m_n = int(timespan_n[1])
+        g_n = int(timespan_n[2])
+        print(a_n, m_n, g_n)
+        delta_n = relativedelta(years=a_n, months=m_n, days=g_n)
+    print(delta_n)
+    cited_n_date = citing_n_date - delta_n
+    print(cited_n_date)
+    cited_year = (str(cited_n_date)[0:4])
+    return cited_year
 
-    def get_cited_date(created):
-    citing_n_date = datetime.strptime(created, '%Y-%m-%d')
-    deltaobj = dateutil.relativedelta.relativedelta(years=1, months=1, days=1)
-    cited_n_date = citing_n_date - deltaobj
-    return cited_n_date
+creation1='2020'
+timespan1 = 'P1Y10M15D'
+print(get_cited_date(creation1, timespan1))
+
+'''
+#Enrica: we can complete the extraction of both citing and cited year and transform them in integer for other purposes when required, with a dynamic programming that stores year YYYY string for each doi in a dictionary
+#This is a really preliminary, not-tested draft, about what I think, we can recall the compilation of dictionary every time we need it and find the years values already stored there
+
+def doi_dates(data, doi, doi_date_dict):
+    doi_date_dict = {}
+    if doi in solution_dict:
+        return doi_date_dict[doi]
+    else:
+        doi_in_citing = do_filter_by_value(data, doi, 'citing_doi')
+        if len(doi_in_citing) > 0:
+            doi_date_dict[doi] = ((doi_in_citing['created'])[0:4])
+            print(doi_date_dict)
+            return = doi_date_dict[doi]
+        else:
+            doi_in_cited = do_filter_by_value(data, doi, 'cited_doi')
+            created = doi_in_cited[0['created']]
+            timespan = doi_in_cited[0['timespan']]
+            cited_year = get_cited_date(created, timespan)
+            doi_date_dict[doi] = ((cited_year)
+            return = doi_date_dict[doi]
+'''
 
 #FUNCTION 2 
 
