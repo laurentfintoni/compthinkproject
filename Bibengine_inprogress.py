@@ -3,7 +3,10 @@
 import pandas as pd
 import csv
 import re
+import fnmatch
 import pprint #to make things pretty because life is beautiful 
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 #SET THE FILE FOR YOUR SAMPLE DATA 
 citations_file_path = '/Users/laurentfintoni/Desktop/University/COURSE DOCS/YEAR 1/Q1/COMPUTATIONAL THINKING/Project/citations_sample.csv'
@@ -35,9 +38,6 @@ data = process_citations(citations_file_path)
 #I used pasing in y, m and d beacuse it was easier for me than transform on the overall days
 #You find a lot of print function to see intermediated steps
 """
-import re
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
 
 def get_cited_date(created, timespan):
     while len(created) < 10:
@@ -68,7 +68,7 @@ def get_cited_date(created, timespan):
 
 creation1='2020'
 timespan1 = 'P1Y10M15D'
-print(get_cited_date(creation1, timespan1))
+#print(get_cited_date(creation1, timespan1))
 
 '''
 #Enrica: we can complete the extraction of both citing and cited year and transform them in integer for other purposes when required, with a dynamic programming that stores year YYYY string for each doi in a dictionary
@@ -116,17 +116,21 @@ def doi_dates(data, doi, doi_date_dict):
 #This is a working dictionary version 
 
 def do_compute_impact_factor(data, dois, year):
-    if type(year) is not str: #return error if year isn't a string 
-        return 'The year input must be a string \U0001F645.' 
+    if type(year) is not str or year == '': #return error if year isn't a string 
+        return 'The year input must be a string with four characters \U0001F645.' 
     if len(dois) == 0: #return error if set is empty 
         return 'There are no input DOIS \U0001F645.'
+    str_pattern = r'(\d{4}$)'
+    match = re.match(str_pattern, year)
+    if match == None: #catch eroneous year string w/ regex
+        return 'The year must be a string with a YYYY format \U0001F913.'
     citations_count = 0 #create a variable to count citations 
     for row in data: #look at all dict instances in list 
         for i in dois: #look at the DOIS in input 
             if i in row["cited"] and year in row["creation"]: #if a DOI in input and the year match in the respective columns add a count
                 citations_count +=1
     if citations_count == 0: #return error if counts are empty  
-        return 'Looks like there are no citations \U0001F622.'
+        return 'There are no citations to compute the Impact Factor with \U0001F622.'
     docs_published = 0 #create a variable to count published docs 
     year_int = int(year) #change the year input to an integer so we can change it 
     year_1 = str(year_int - 1) #change the year integer back into a string minus 1 and 2 
@@ -138,7 +142,7 @@ def do_compute_impact_factor(data, dois, year):
             if i in row["citing"] and year_2 in row["creation"]:
                 docs_published +=1
     if docs_published == 0: #return error if counts are empty, also avoid ZeroDivisionError 
-        return 'Looks like there are no published documents in previous two years to compute IF with \U0001F622.'
+        return 'There are no published documents in the previous two years to compute Impact Factor with \U0001F622.'
     else: 
         impact_factor = citations_count / docs_published #Do the thing! 
         return (f'There were {citations_count} citations for all dois in {year}, {docs_published} documents published in the previous two years, and the impact factor is {impact_factor}.') #use formatted string literal to make the result pretty 
@@ -146,8 +150,7 @@ def do_compute_impact_factor(data, dois, year):
 #A variable with a set of test DOIS for impact factor 
 test_DOIS = {'10.1016/s0140-6736(97)11096-0', '10.1097/nmc.0000000000000337', '10.3389/fmars.2018.00106', '10.1007/978-3-319-94694-8_26', '10.1080/13590840020013248'}
 
-#You can uncomment this print call and change the years and see the results (works for 2018, 19, 20)
-#print(do_compute_impact_factor(data, test_DOIS, 2010))
+#print(do_compute_impact_factor(data, test_DOIS, '2015'))
 
 #FUNCTION 3 (ENRICA)
 
@@ -170,8 +173,20 @@ test_DOIS = {'10.1016/s0140-6736(97)11096-0', '10.1097/nmc.0000000000000337', '1
     return citations_count, citation_dict
 print(do_get_co_citations(data, '10.1016/s0140-6736(97)11096-0', '10.5993/ajhb.29.1.7')) """
 
+def do_filter_by_value(data, query, field):
+    subcollection = []
+    for row in data:
+        #verify if it is necessary to convert every field value in string and if we can have to add a pre-lowercase 
+        if row[field] == query:
+	        subcollection.append(row)
+    return subcollection
+
 #This is an Enrica woking dictionary version using do_filter_by_value function:
 def do_get_co_citations(data, doi1, doi2):
+    if type(doi1) is not str or doi1 == '': #return error if doi isn't a string 
+        return 'The first doi input must be a string with at least one character \U0001F645.'
+    if type(doi2) is not str or doi2 == '': #return error if doi isn't a string 
+        return 'The second doi input must be a string with at least one character \U0001F645.'
     doi1sublist = do_filter_by_value(data, doi1, 'cited')
     doi2sublist = do_filter_by_value(data, doi2, 'cited')
     co_citations = 0
@@ -179,7 +194,7 @@ def do_get_co_citations(data, doi1, doi2):
         for doiB in doi2sublist:
             if doiA['citing'] == doiB['citing']:
                 co_citations += 1
-    return co_citations    # It returns an integer defining how many times the two input documents are cited together by other documents.
+    return (f'The total number of co-citations for the two input documents is: {co_citations}.') 
 
 #FUNCTION 4 (ENRICA)
 
@@ -193,6 +208,10 @@ def do_get_co_citations(data, doi1, doi2):
 #maybe it could be more economic for the code (?) writing just one different function to be recalled with the different value of cited VS citing:
 
 def do_get_bibliographic_coupling(data, doi1, doi2):
+    if type(doi1) is not str or doi1 == '': #return error if doi isn't a string 
+        return 'The first doi input must be a string with at least one character \U0001F645.'
+    if type(doi2) is not str or doi2 == '': #return error if doi isn't a string 
+        return 'The second doi input must be a string with at least one character \U0001F645.'
     doi1sublist = do_filter_by_value(data, doi1, 'citing')
     doi2sublist = do_filter_by_value(data, doi2, 'citing')
     bibliographic_coupling = 0
@@ -200,7 +219,7 @@ def do_get_bibliographic_coupling(data, doi1, doi2):
         for doiB in doi2sublist:
             if doiA['cited'] == doiB['cited']:
                 bibliographic_coupling += 1
-    return bibliographic_coupling
+    return (f'The total number of shared citations by the input documents is: {bibliographic_coupling}.')
 
 #FUNCTION 5 (CAMILLA)
 
@@ -246,13 +265,17 @@ print(do_get_citation_network(data, '2018', '2020')) """
 #It returns a sub-collection of citations in data where either the citing DOI (if is_citing is True)
 #or the cited DOI (if is_citing is False) is characterised by the input prefix.
 
-#This is a working version w/ dictionary, needs: constrain string input to 2 numbers, dot, 4 numbers using regex 
+#This is a working version w/ dictionary
 
 def do_search_by_prefix(data, prefix, is_citing):
-    if type(prefix) is not str: #return error is prefix is not a string 
-        return 'The prefix must be a string \U0001F913.'
-    if type(is_citing) is not bool: #return error is citing option is not boolean 
+    if type(prefix) is not str or prefix == '': #return error, prefix is not a string 
+        return 'The prefix must be a string with at least one character \U0001F913.'
+    if type(is_citing) is not bool: #return error, is citing option is not boolean 
         return 'We need a boolean option \U0001F913.'
+    str_pattern = r'(\d{0,2}\.\d{0,5})'
+    match = re.match(str_pattern, prefix)
+    if match == None: #catch eroneous prefix strings w/ regex
+        return 'The prefix must be a string with a pattern of 2 digits followed by a full stop and another set of digits \U0001F913.'
     result = [] #create an empty list for the results 
     if is_citing: #select the column to do search on based on boolean input 
         col = 'citing'
@@ -260,11 +283,14 @@ def do_search_by_prefix(data, prefix, is_citing):
         col = 'cited'
     for row in data: #search for the prefix in the relevant column of each dict entry and append them to result 
         if prefix in row[col]:
-            result.append(row)
-    pretty_result = pprint.pformat(result)
-    return (f'These are the DOIS in {col} that match your prefix: \n {pretty_result}')
+            result.append(row[col])
+    if len(result) == 0: #catch if results are empty 
+        return 'There are no results for your search, please try again \U0001F647.'
+    else: 
+        pretty_result = pprint.pformat(result)
+        return (f'These are the DOIS in {col} that match your prefix: \n {pretty_result}')
 
-#print(do_search_by_prefix(data, 10, True))
+#print(do_search_by_prefix(data, '10.99999', True))
 
 #FUNCTION 8 (EVERYONE)
 
@@ -283,7 +309,58 @@ def do_search_by_prefix(data, prefix, is_citing):
 #All matches are case insensitive – e.g. specifying World as query will match also strings
 #that contain world
 
-#def do_search(data, query, field)
+#something about matching different date formats? right now it only match yyyy-mm-dd + still needs wildcard matching and booleans 
+
+def do_search(data, query, field):
+    if type(query) is not str or query == '': #return error query is not a string 
+        return 'The input query must be a string with at least one character \U0001F913.'
+    if type(field) is not str: #return error field is not a string 
+        return 'The chosen field for queries must be a string \U0001F913.'
+    field_pattern = r'(citing|cited|creation|timespan)'
+    field_match = re.match(field_pattern, field)
+    if field_match == None: #catch eroneous field strings w/ regex
+        return 'The chosen field must be either citing, cited, creation or timespan \U0001F913.'
+    query = query.lower() #lower case input for insensitive match
+    query_pattern = re.compile(r'.*\*.*')
+    query_match = re.match(query_pattern, query)
+    if query_match != None:
+        new_query = ''
+        for character in query:
+            if character == '*':
+                new_query += '.*'
+            elif character in '.^${}+-?()[]\|':
+                new_query += '\\'+character
+            else:
+                new_query += character
+        query = new_query
+    result = []
+    if field == 'citing':
+        search_row = 'citing'
+        for row in data:
+            if query in row[search_row].lower():
+                result.append(row[search_row])                
+    elif field == 'cited':
+        search_row = 'cited'
+        for row in data:
+            if query in row[search_row].lower():
+                result.append(row[search_row])   
+    elif field == 'creation':
+        search_row = 'creation'
+        for row in data:
+            if query in row[search_row].lower():
+                result.extend([row['citing'], row['cited']])   
+    else:
+        search_row = 'timespan'
+        for row in data:
+            if query in row[search_row].lower():
+                result.extend([row['citing'], row['cited']])
+    if len(result) == 0:
+        return 'There were no citations for your search, please try again \U0001F647.', query
+    else:
+        pretty_result = pprint.pformat(result)
+        return (f'These are the matching citations for query \'{query}\' in field \'{field}\': \n {pretty_result}')
+
+print(do_search(data, 'AJMG', 'citing'))
 
 #FUNCTION 9 (EVERYONE>ENRICA)
 
@@ -303,10 +380,11 @@ def do_search_by_prefix(data, prefix, is_citing):
 #def do_filter_by_value(data, query, field) 
 #This is a working version on data dictionary; used for coupling and co-citation
 
-def do_filter_by_value(data, query, field):
+""" def do_filter_by_value(data, query, field):
     subcollection = []
     for row in data:
         #verify if it is necessary to convert every field value in string and if we can have to add a pre-lowercase 
         if row[field] == query:
 	        subcollection.append(row)
     return subcollection
+ """
