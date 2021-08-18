@@ -70,27 +70,79 @@ timespan1 = 'P1Y10M15D'
 #print(get_cited_date(creation1, timespan1))
 
 '''
-#Enrica: we can complete the extraction of both citing and cited year and transform them in integer for other purposes when required, with a dynamic programming that stores year YYYY string for each doi in a dictionary
-#This is a really preliminary, not-tested draft, about what I think, we can recall the compilation of dictionary every time we need it and find the years values already stored there
+#Enrica: this is a running sequence of functions with external dictionary for doi-dates to have the data fully processed and obteining a list of dictionaries composes as follow:
+# [{'citing': '10.3390/vaccines7040201', 'cited': '10.4161/hv.26036', 'citing_year': '2019', 'cited_year': '2013'}, {'citing': '10.3390/vaccines7040201', 'cited': '10.7861/clinmedicine.17-6-484', 'citing_year': '2019', 'cited_year': '2017'}]
+#we can then use the year strings and transform them in integer for other purposes when required
+
+import re
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
+def get_cited_date(created, timespan):
+    while len(created) < 10:
+        created = created + '-01'
+    citing_n_date = datetime.strptime(created, '%Y-%m-%d')
+    timespan_n = (re.split('[a-zA-Z]', timespan, 4)[1:-1])
+    if len(timespan_n) == 1:
+        a_n = int(timespan_n[0])
+        delta_n = relativedelta(years=a_n)
+    if len(timespan_n) == 2:
+        a_n = int(timespan_n[0])
+        m_n = int(timespan_n[1])
+        delta_n = relativedelta(years=a_n, months=m_n)
+    if len(timespan_n) == 3:
+        a_n = int(timespan_n[0])
+        m_n = int(timespan_n[1])
+        g_n = int(timespan_n[2])
+        delta_n = relativedelta(years=a_n, months=m_n, days=g_n)
+    cited_n_date = citing_n_date - delta_n
+    cited_year = (str(cited_n_date)[0:4])
+    return cited_year
+
+def do_filter_by_value(data, query, field):
+    subcollection = []
+    for row in data:
+        if row[field] == query:
+	        subcollection.append(row)
+    return subcollection
 
 def doi_dates(data, doi, doi_date_dict):
-    doi_date_dict = {}
-    if doi in solution_dict:
+    if doi in doi_date_dict:
         return doi_date_dict[doi]
     else:
-        doi_in_citing = do_filter_by_value(data, doi, 'citing_doi')
+        doi_in_citing = do_filter_by_value(data, doi, 'citing')
         if len(doi_in_citing) > 0:
-            doi_date_dict[doi] = ((doi_in_citing['created'])[0:4])
-            print(doi_date_dict)
-            return = doi_date_dict[doi]
+            Ii_doi_in_citing = doi_in_citing[0]
+            doi_date_dict[doi] = ((Ii_doi_in_citing['creation'])[0:4])
+            return doi_date_dict[doi]
         else:
-            doi_in_cited = do_filter_by_value(data, doi, 'cited_doi')
-            created = doi_in_cited[0['created']]
-            timespan = doi_in_cited[0['timespan']]
-            cited_year = get_cited_date(created, timespan)
-            doi_date_dict[doi] = ((cited_year)
-            return = doi_date_dict[doi]
-'''
+            doi_in_cited = do_filter_by_value(data, doi, 'cited')
+            Ii_doi_in_cited = doi_in_cited[0]
+            Iicreation=Ii_doi_in_cited['creation']
+            Iitimespan=Ii_doi_in_cited['timespan']
+            cited_year = get_cited_date(Iicreation, Iitimespan)
+            doi_date_dict[doi] = cited_year
+            return doi_date_dict[doi]
+    return doi_date_dict
+
+def process_citations(citations_file_path):
+    import csv
+    source = open(citations_file_path, mode="r", encoding="utf8")
+    source_reader = csv.DictReader(source)
+    source_data = list(source_reader)
+    doi_date_dict2 = {}
+    for row in source_data:
+        h = row['citing']
+        l = row['cited']
+        doi_dates(source_data, h, doi_date_dict2)
+        doi_dates(source_data, l, doi_date_dict2)
+        row['creation'] = doi_date_dict2[h]
+        row['timespan'] = doi_date_dict2[l]
+        row['citing_year'] = row.pop('creation')
+        row['cited_year'] = row.pop('timespan')
+    return source_data
+
+print(process_citations('sources/sources2.csv'))'''
 
 #FUNCTION 2 
 
