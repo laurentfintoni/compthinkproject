@@ -372,18 +372,6 @@ def do_search(data, query, field):
     if field_match == None: #catch eroneous field strings w/ regex
         return 'The chosen field must be either citing, cited, creation or timespan \U0001F913.'
     query = query.lower() #lower case input for insensitive match
-    query_pattern = re.compile(r'.*\*.*')
-    query_match = re.match(query_pattern, query)
-    if query_match != None:
-        new_query = ''
-        for character in query:
-            if character == '*':
-                new_query += '.*'
-            elif character in '.^${}+-?()[]\|':
-                new_query += '\\'+character
-            else:
-                new_query += character
-        query = new_query
     result = []
     if field == 'citing':
         search_row = 'citing'
