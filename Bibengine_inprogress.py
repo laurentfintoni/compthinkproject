@@ -288,38 +288,72 @@ def do_search(data, query, field):
     if field_match == None: 
         return 'The chosen field must be either citing, cited, creation or timespan \U0001F913.'
     #lower case input for insensitive match
-    query = query.lower() 
-    #initialize an empty result list
-    result = []
-    #iterate over input field to find results based on query string, only append citations not dates or timespans
-    if field == 'citing':
-        search_row = 'citing'
-        for row in data:
-            if query in row[search_row].lower():
-                result.append(row[search_row])                
-    elif field == 'cited':
-        search_row = 'cited'
-        for row in data:
-            if query in row[search_row].lower():
-                result.append(row[search_row])   
-    elif field == 'creation':
-        search_row = 'creation'
-        for row in data:
-            if query in row[search_row].lower():
-                result.extend([row['citing'], row['cited']])   
+    query = query.lower()
+    #check if the query input contains either ? or * wildcards, if so initialize an empty query variable and iterate over the input query to look for wildcards and replace them with equivalent regex value
+    if re.search(r'\*|\?', query):
+        re_query = ''
+        for l in query:
+            if l == '*':
+                re_query += '.*'
+            elif l == '?':
+                re_query += '.'
+            elif l in '.^${}+-()[]\|': #not sure we need this tbh 
+                re_query += '\\'+l
+            else:
+                re_query += l 
+        #initialize an empty result list
+        result = []
+        #iterate over input field to find results based on query string, only append citations not dates or timespans
+        if field == 'citing':
+            search_row = 'citing'
+            for row in data:
+                if re.search(re_query, row[search_row].lower()):
+                    result.append(row[search_row])                
+        elif field == 'cited':
+            search_row = 'cited'
+            for row in data:
+                if re.search(re_query, row[search_row].lower()):
+                    result.append(row[search_row])   
+        elif field == 'creation':
+            search_row = 'creation'
+            for row in data:
+                if re.search(re_query, row[search_row].lower()):
+                    result.extend([row['citing'], row['cited']])   
+        else:
+            search_row = 'timespan'
+            for row in data:
+                if re.search(query, row[search_row].lower()):
+                    result.extend([row['citing'], row['cited']]) 
     else:
-        search_row = 'timespan'
-        for row in data:
-            if query in row[search_row].lower():
-                result.extend([row['citing'], row['cited']])
+        result = []
+        if field == 'citing':
+            search_row = 'citing'
+            for row in data:
+                if re.match(query, row[search_row].lower()):
+                    result.append(row[search_row])                
+        elif field == 'cited':
+            search_row = 'cited'
+            for row in data:
+                if re.match(query, row[search_row].lower()):
+                    result.append(row[search_row])   
+        elif field == 'creation':
+            search_row = 'creation'
+            for row in data:
+                if re.match(query, row[search_row].lower()):
+                    result.extend([row['citing'], row['cited']])   
+        else:
+            search_row = 'timespan'
+            for row in data:
+                if re.match(query, row[search_row].lower()):
+                    result.extend([row['citing'], row['cited']])
     #if the results are empty return error message
     if len(result) == 0:
         return 'There were no citations for your search, please try again \U0001F647.'
     else:
         pretty_result = pprint.pformat(result)
-        return (f'These are the matching citations for query \'{query}\' in field \'{field}\': \n {pretty_result}')
+        return (f'These are the matching citations for query \'{query}\' in field \'{field}\': \n {pretty_result}'), re_query
 
-#print(do_search(data, 'A?MG', 'citing'))
+print(do_search(data, '*/01.nurs?', 'citing'))
 
 #FUNCTION 9 (EVERYONE>ENRICA)
 
