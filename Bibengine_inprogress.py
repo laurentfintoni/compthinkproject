@@ -4,7 +4,6 @@ import re #to use regex
 import pprint #to make things pretty because life is beautiful 
 from datetime import datetime #to compute cited years
 from dateutil.relativedelta import relativedelta
-import fnmatch 
 
 #SET THE FILE FOR YOUR SAMPLE DATA 
 citations_file_path = '/Users/laurentfintoni/Desktop/University/COURSE DOCS/YEAR 1/Q1/COMPUTATIONAL THINKING/Project/citations_sample.csv'
@@ -329,31 +328,31 @@ def do_search(data, query, field):
         if field == 'citing':
             search_row = 'citing'
             for row in data:
-                if re.match(query, row[search_row].lower()):
+                if re.fullmatch(query, row[search_row].lower()):
                     result.append(row[search_row])                
         elif field == 'cited':
             search_row = 'cited'
             for row in data:
-                if re.match(query, row[search_row].lower()):
+                if re.fullmatch(query, row[search_row].lower()):
                     result.append(row[search_row])   
         elif field == 'creation':
             search_row = 'creation'
             for row in data:
-                if re.match(query, row[search_row].lower()):
+                if re.fullmatch(query, row[search_row].lower()):
                     result.extend([row['citing'], row['cited']])   
         else:
             search_row = 'timespan'
             for row in data:
-                if re.match(query, row[search_row].lower()):
+                if re.fullmatch(query, row[search_row].lower()):
                     result.extend([row['citing'], row['cited']])
     #if the results are empty return error message
     if len(result) == 0:
         return 'There were no citations for your search, please try again \U0001F647.'
     else:
         pretty_result = pprint.pformat(result)
-        return (f'These are the matching citations for query \'{query}\' in field \'{field}\': \n {pretty_result}'), re_query
+        return (f'These are the matching citations for query \'{query}\' in field \'{field}\': \n {pretty_result}')
 
-print(do_search(data, '*/01.nurs?', 'citing'))
+print(do_search(data, '1998?', 'creation'))
 
 #FUNCTION 9 (EVERYONE>ENRICA)
 
