@@ -42,7 +42,10 @@ def process_citations(citations_file_path):
             m_n = int(timespan_n[1])
             g_n = int(timespan_n[2])
             delta_n = relativedelta(years=a_n, months=m_n, days=g_n)
-        cited_n_date = citing_n_date - delta_n
+        if timespan_str[0] == "-": #just in case there is a negative timespan 
+            cited_n_date = citing_n_date + delta_n
+        else:
+            cited_n_date = citing_n_date - delta_n
         cited_year = (str(cited_n_date)[0:4])
         row['cited_year'] = cited_year
     return matrix
