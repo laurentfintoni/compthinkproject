@@ -62,41 +62,58 @@ data = process_citations(citations_file_path)
 #NEEDS TO ADD SEARCH FOR TIMESPAN COLUMN AS PER ENRICA SUGGESTION (LO)
 
 def do_compute_impact_factor(data, dois, year):
-    if type(year) is not str or year == '': #return error if year isn't a string 
+    #return error if year isn't a string 
+    if type(year) is not str or year == '': 
         return 'The year input must be a string with four characters \U0001F645.' 
-    if len(dois) == 0: #return error if set is empty 
+    #return error if set is empty 
+    if len(dois) == 0: 
         return 'There are no input DOIS \U0001F645.'
+    #catch eroneous year string w/ regex
     str_pattern = r'(\d{4}$)'
     match = re.match(str_pattern, year)
-    if match == None: #catch eroneous year string w/ regex
+    if match == None: 
         return 'The year must be a string with a YYYY format \U0001F913.'
-    citations_count = 0 #create a variable to count citations 
-    for row in data: #look at all dict instances in list 
-        for i in dois: #look at the DOIS in input 
-            if i in row["cited"] and year in row["creation"]: #if a DOI in input and the year match in the respective columns add a count
+    #create a variable to count citations 
+    citations_count = 0 
+    #look at all dict instances in list and DOIS in input
+    for row in data: 
+        for i in dois: 
+            #if a DOI in input and the year match in the respective columns add a count
+            if i in row["cited"] and year in row["creation"]: 
                 citations_count +=1
-    if citations_count == 0: #return error if counts are empty  
+    #return error if count is empty 
+    if citations_count == 0: 
         return 'There are no citations to compute the Impact Factor with \U0001F622.'
-    docs_published = 0 #create a variable to count published docs 
-    year_int = int(year) #change the year input to an integer so we can change it 
-    year_1 = str(year_int - 1) #change the year integer back into a string minus 1 and 2 
-    year_2 = str(year_int - 2)        
-    for row in data: #same as above but this time we look for matches in other columns 
+    #create a variable to count published docs 
+    docs_published = 0 
+    #change year input to integer to create two new year variables for the preceding years, then change those back to strings for searching  
+    year_int = int(year) 
+    year_1 = str(year_int - 1) 
+    year_2 = str(year_int - 2)
+    #same as above but this time we look for matches in other columns         
+    for row in data: 
         for i in dois:       
-            if i in row["citing"] and year_1 in row["creation"]:
+            if i in row["citing"] and year_1 in row["citing_year"]:
                 docs_published +=1
-            if i in row["citing"] and year_2 in row["creation"]:
+            if i in row["citing"] and year_2 in row["citing_year"]:
                 docs_published +=1
-    if docs_published == 0: #return error if counts are empty, also avoid ZeroDivisionError 
+            if i in row["cited"] and year_1 in row["cited_year"]:
+                docs_published +=1
+            if i in row["cited"] and year_2 in row["cited_year"]:
+                docs_published +=1
+    #return error if count is empty, also avoids ZeroDivisionError 
+    if docs_published == 0: 
         return 'There are no published documents in the previous two years to compute Impact Factor with \U0001F622.'
     else: 
-        impact_factor = citations_count / docs_published #Do the thing! 
-        return (f'There were {citations_count} citations for all dois in {year}, {docs_published} documents published in the previous two years, and the impact factor is {impact_factor}.') #use formatted string literal to make the result pretty 
+        #Calculate IF and round it up to 2 decimal points
+        impact_factor = round(citations_count / docs_published, 2)
+        #use formatted string literal to make the result pretty  
+        return (f'There were {citations_count} citations for all dois in {year}, {docs_published} documents published in the previous two years, and the impact factor is {impact_factor}.') 
 
 #A variable with a set of test DOIS for impact factor 
-test_DOIS = {'10.1016/s0140-6736(97)11096-0', '10.1097/nmc.0000000000000337', '10.3389/fmars.2018.00106', '10.1007/978-3-319-94694-8_26', '10.1080/13590840020013248'}
+test_DOIS = {'10.3390/vaccines7040201', '10.3389/fimmu.2018.02532', '10.1007/s00134-019-05862-0', '10.1016/b978-0-323-35761-6.00063-8', '10.1007/s40506-020-00219-4'}
 
-#print(do_compute_impact_factor(data, test_DOIS, '2015'))
+print(do_compute_impact_factor(data, test_DOIS, '2019'))
 
 #FUNCTION 3 (ENRICA)
 
@@ -125,7 +142,7 @@ def do_get_co_citations(data, doi1, doi2):
                 co_citations += 1
     return (f'The total number of co-citations for the two input documents is: {co_citations}.')
 
-print(do_get_co_citations(data, '10.1016/s0140-6736(97)11096-0', '10.1080/15265161.2010.519226'))
+#print(do_get_co_citations(data, '10.1016/s0140-6736(97)11096-0', '10.1080/15265161.2010.519226'))
 
 #FUNCTION 4 (ENRICA)
 
