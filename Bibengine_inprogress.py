@@ -1,148 +1,53 @@
 #IMPORT SECTION
-
-import pandas as pd
-import csv
-import re
+import csv #to read the data
+import re #to use regex
 import pprint #to make things pretty because life is beautiful 
-from datetime import datetime
+from datetime import datetime #to compute cited years
 from dateutil.relativedelta import relativedelta
 
 #SET THE FILE FOR YOUR SAMPLE DATA 
 citations_file_path = '/Users/laurentfintoni/Desktop/University/COURSE DOCS/YEAR 1/Q1/COMPUTATIONAL THINKING/Project/citations_sample.csv'
 
-#FUNCTION 1 PROCESS CITATIONS: 2 OPTIONS, ONE W/ CSV + DICT, ONE WITH PANDAS, COMMENT OUT THE ONE YOU DONT WANT TO USE OTHERWISE IT WILL BREAK BECAUSE THEY HAVE SAME NAME 
+#FUNCTION 1
 
-#Dictionary version
 def process_citations(citations_file_path):
-    matrix = []
-    with open(citations_file_path, mode='r') as file:
+    #initialize an empty list to contain data
+    matrix = [] 
+    #populate list with raw data, each row is a dictionary with the column as key, row entry as value 
+    with open(citations_file_path, mode='r') as file: 
         csvFile = csv.DictReader(file)
         for row in csvFile:
             matrix.append(row)
-        return matrix 
-
-""" #Pandas version w/ parse-dates
-def process_citations(citations_file_path):
-    citationpd = pd.read_csv(citations_file_path, header=0, parse_dates=['creation']) #header sets column names, parsedates converts to singular date format 
-    return citationpd """
+    #iterate over the raw data to add two new key/value pairs, citing year and cited year both in YYYY formats to use for graph function and Impact Factor while retaining creation and timespan for search functions 
+    for row in matrix: 
+    #create a citing year key/value pair by just grabbing the first four characters of the creation field 
+        citing_year = row['creation']
+        row['citing_year'] = citing_year[0:4]
+        timespan_str = row['timespan']
+    #create a cited year key/value pair by using datetime computations 
+        while len(citing_year) < 10:
+            citing_year = citing_year + '-01'
+        citing_n_date = datetime.strptime(citing_year, '%Y-%m-%d')
+        timespan_n = (re.split('[a-zA-Z]', timespan_str, 4)[1:-1])
+        if len(timespan_n) == 1:
+            a_n = int(timespan_n[0])
+            delta_n = relativedelta(years=a_n)
+        elif len(timespan_n) == 2:
+            a_n = int(timespan_n[0])
+            m_n = int(timespan_n[1])
+            delta_n = relativedelta(years=a_n, months=m_n)
+        else:
+            a_n = int(timespan_n[0])
+            m_n = int(timespan_n[1])
+            g_n = int(timespan_n[2])
+            delta_n = relativedelta(years=a_n, months=m_n, days=g_n)
+        cited_n_date = citing_n_date - delta_n
+        cited_year = (str(cited_n_date)[0:4])
+        row['cited_year'] = cited_year
+    return matrix
 
 #SET A DATA VARIABLE THAT PROCESSES THE SAMPLE 
 data = process_citations(citations_file_path)
-
-#ANCILLARY FUNCTION TO MANAGE DATE AND TIMESPAN:
-
-"""#This is an Enrica woring version of functions to transform "creation string" in a normalized datetime object and compute differences between date and timedelta:
-#already able to manage YYYY-MM-DD, YYYY or YYYY-MM creation strings
-#already completed with corret parsing of ISO duration from 'P0Y5M15D' to (years=0, months=5, days=15): maybe possible to do it more elegant without repetition.
-#I used pasing in y, m and d beacuse it was easier for me than transform on the overall days
-#You find a lot of print function to see intermediated steps
-"""
-
-def get_cited_date(created, timespan):
-    while len(created) < 10:
-        created = created + '-01'
-    print(created)
-    citing_n_date = datetime.strptime(created, '%Y-%m-%d')
-    print(citing_n_date)
-    timespan_n = (re.split('[a-zA-Z]', timespan, 4)[1:-1])
-    print(timespan_n)
-    if len(timespan_n) == 1:
-        a_n = int(timespan_n[0])
-        delta_n = relativedelta(years=a_n)
-    if len(timespan_n) == 2:
-        a_n = int(timespan_n[0])
-        m_n = int(timespan_n[1])
-        delta_n = relativedelta(years=a_n, months=m_n)
-    if len(timespan_n) == 3:
-        a_n = int(timespan_n[0])
-        m_n = int(timespan_n[1])
-        g_n = int(timespan_n[2])
-        print(a_n, m_n, g_n)
-        delta_n = relativedelta(years=a_n, months=m_n, days=g_n)
-    print(delta_n)
-    cited_n_date = citing_n_date - delta_n
-    print(cited_n_date)
-    cited_year = (str(cited_n_date)[0:4])
-    return cited_year
-
-creation1='2020'
-timespan1 = 'P1Y10M15D'
-#print(get_cited_date(creation1, timespan1))
-
-'''
-#Enrica: this is a running sequence of functions with external dictionary for doi-dates to have the data fully processed and obteining a list of dictionaries composes as follow:
-# [{'citing': '10.3390/vaccines7040201', 'cited': '10.4161/hv.26036', 'citing_year': '2019', 'cited_year': '2013'}, {'citing': '10.3390/vaccines7040201', 'cited': '10.7861/clinmedicine.17-6-484', 'citing_year': '2019', 'cited_year': '2017'}]
-#we can then use the year strings and transform them in integer for other purposes when required
-
-import re
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-
-def get_cited_date(created, timespan):
-    while len(created) < 10:
-        created = created + '-01'
-    citing_n_date = datetime.strptime(created, '%Y-%m-%d')
-    timespan_n = (re.split('[a-zA-Z]', timespan, 4)[1:-1])
-    if len(timespan_n) == 1:
-        a_n = int(timespan_n[0])
-        delta_n = relativedelta(years=a_n)
-    if len(timespan_n) == 2:
-        a_n = int(timespan_n[0])
-        m_n = int(timespan_n[1])
-        delta_n = relativedelta(years=a_n, months=m_n)
-    if len(timespan_n) == 3:
-        a_n = int(timespan_n[0])
-        m_n = int(timespan_n[1])
-        g_n = int(timespan_n[2])
-        delta_n = relativedelta(years=a_n, months=m_n, days=g_n)
-    cited_n_date = citing_n_date - delta_n
-    cited_year = (str(cited_n_date)[0:4])
-    return cited_year
-
-def do_filter_by_value(data, query, field):
-    subcollection = []
-    for row in data:
-        if row[field] == query:
-	        subcollection.append(row)
-    return subcollection
-
-def doi_dates(data, doi, doi_date_dict):
-    if doi in doi_date_dict:
-        return doi_date_dict[doi]
-    else:
-        doi_in_citing = do_filter_by_value(data, doi, 'citing')
-        if len(doi_in_citing) > 0:
-            Ii_doi_in_citing = doi_in_citing[0]
-            doi_date_dict[doi] = ((Ii_doi_in_citing['creation'])[0:4])
-            return doi_date_dict[doi]
-        else:
-            doi_in_cited = do_filter_by_value(data, doi, 'cited')
-            Ii_doi_in_cited = doi_in_cited[0]
-            Iicreation=Ii_doi_in_cited['creation']
-            Iitimespan=Ii_doi_in_cited['timespan']
-            cited_year = get_cited_date(Iicreation, Iitimespan)
-            doi_date_dict[doi] = cited_year
-            return doi_date_dict[doi]
-    return doi_date_dict
-
-def process_citations(citations_file_path):
-    import csv
-    source = open(citations_file_path, mode="r", encoding="utf8")
-    source_reader = csv.DictReader(source)
-    source_data = list(source_reader)
-    doi_date_dict2 = {}
-    for row in source_data:
-        h = row['citing']
-        l = row['cited']
-        doi_dates(source_data, h, doi_date_dict2)
-        doi_dates(source_data, l, doi_date_dict2)
-        row['creation'] = doi_date_dict2[h]
-        row['timespan'] = doi_date_dict2[l]
-        row['citing_year'] = row.pop('creation')
-        row['cited_year'] = row.pop('timespan')
-    return source_data
-
-print(process_citations('sources/sources2.csv'))'''
 
 #FUNCTION 2 
 
@@ -153,18 +58,8 @@ print(process_citations('sources/sources2.csv'))'''
 #The IF of a set of documents dois on a year year is computed by counting the number of citations all
 #the documents in dois have received in year year, and then dividing such a value by the number of
 #documents in dois published in the previous two years (i.e. in year-1 and year-2)"""
-
-#This is an unfinished Pandas version
-
-""" def do_compute_impact_factor(data, dois, year):
-    citations_count = 0
-    docs_published = 0
-    filtered = [data[data['cited'].isin(dois)], data[data['citing'].isin(dois)]]
-    filtered_df = pd.concat(filtered).sort_values(by=['creation'])
-    something = filtered_df.loc[filtered_df['creation'].dt.year == int(year)].loc[filtered_df['cited']]
-    return something  """
  
-#This is a working dictionary version 
+#NEEDS TO ADD SEARCH FOR TIMESPAN COLUMN AS PER ENRICA SUGGESTION (LO)
 
 def do_compute_impact_factor(data, dois, year):
     if type(year) is not str or year == '': #return error if year isn't a string 
@@ -210,42 +105,27 @@ test_DOIS = {'10.1016/s0140-6736(97)11096-0', '10.1097/nmc.0000000000000337', '1
 #doi2: the DOI string of the second article
 #It returns an integer defining how many times the two input documents are cited together by other documents.
 
-#This is an unfinished version Laurent started working on, we can delete later but keeping in case it's useful, it's like half the function 
-""" def do_get_co_citations(data, doi1, doi2):
-    citations_count = 0
-    citation_dict = dict()
-    for row in data:
-        for doi in row["citing"].split():
-            if doi not in citation_dict:
-                citation_dict[doi] = []
-            if doi1 and doi2 in row["cited"]:
-                citation_dict[doi].append(row["cited"])
-                citations_count +=1
-    return citations_count, citation_dict
-print(do_get_co_citations(data, '10.1016/s0140-6736(97)11096-0', '10.5993/ajhb.29.1.7')) """
-
-def do_filter_by_value(data, query, field):
-    subcollection = []
-    for row in data:
-        #verify if it is necessary to convert every field value in string and if we can have to add a pre-lowercase 
-        if row[field] == query:
-	        subcollection.append(row)
-    return subcollection
-
 #This is an Enrica woking dictionary version using do_filter_by_value function:
 def do_get_co_citations(data, doi1, doi2):
     if type(doi1) is not str or doi1 == '': #return error if doi isn't a string 
         return 'The first doi input must be a string with at least one character \U0001F645.'
     if type(doi2) is not str or doi2 == '': #return error if doi isn't a string 
         return 'The second doi input must be a string with at least one character \U0001F645.'
-    doi1sublist = do_filter_by_value(data, doi1, 'cited')
-    doi2sublist = do_filter_by_value(data, doi2, 'cited')
+    doi1sublist = []
+    doi2sublist = []
+    for row in data:
+        if row['cited'] == doi1:
+            doi1sublist.append(row)
+        if row['cited'] == doi2:
+            doi2sublist.append(row)
     co_citations = 0
     for doiA in doi1sublist:
         for doiB in doi2sublist:
             if doiA['citing'] == doiB['citing']:
                 co_citations += 1
-    return (f'The total number of co-citations for the two input documents is: {co_citations}.') 
+    return (f'The total number of co-citations for the two input documents is: {co_citations}.')
+
+print(do_get_co_citations(data, '10.1016/s0140-6736(97)11096-0', '10.1080/15265161.2010.519226'))
 
 #FUNCTION 4 (ENRICA)
 
@@ -263,8 +143,13 @@ def do_get_bibliographic_coupling(data, doi1, doi2):
         return 'The first doi input must be a string with at least one character \U0001F645.'
     if type(doi2) is not str or doi2 == '': #return error if doi isn't a string 
         return 'The second doi input must be a string with at least one character \U0001F645.'
-    doi1sublist = do_filter_by_value(data, doi1, 'citing')
-    doi2sublist = do_filter_by_value(data, doi2, 'citing')
+    doi1sublist = []
+    doi2sublist = []
+    for row in data:
+        if row['citing'] == doi1:
+            doi1sublist.append(row)
+        if row['citing'] == doi2:
+            doi2sublist.append(row)
     bibliographic_coupling = 0
     for doiA in doi1sublist:
         for doiB in doi2sublist:
@@ -341,7 +226,7 @@ def do_search_by_prefix(data, prefix, is_citing):
         pretty_result = pprint.pformat(result)
         return (f'These are the DOIS in {col} that match your prefix: \n {pretty_result}')
 
-#print(do_search_by_prefix(data, '10.99999', True))
+#print(do_search_by_prefix(data, '10.3928', True))
 
 #FUNCTION 8 (EVERYONE)
 
@@ -394,12 +279,12 @@ def do_search(data, query, field):
             if query in row[search_row].lower():
                 result.extend([row['citing'], row['cited']])
     if len(result) == 0:
-        return 'There were no citations for your search, please try again \U0001F647.', query
+        return 'There were no citations for your search, please try again \U0001F647.'
     else:
         pretty_result = pprint.pformat(result)
         return (f'These are the matching citations for query \'{query}\' in field \'{field}\': \n {pretty_result}')
 
-print(do_search(data, 'AJMG', 'citing'))
+#print(do_search(data, 'A?MG', 'citing'))
 
 #FUNCTION 9 (EVERYONE>ENRICA)
 
