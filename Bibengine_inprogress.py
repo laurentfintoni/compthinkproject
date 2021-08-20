@@ -4,6 +4,7 @@ import re #to use regex
 import pprint #to make things pretty because life is beautiful 
 from datetime import datetime #to compute cited years
 from dateutil.relativedelta import relativedelta
+import fnmatch 
 
 #SET THE FILE FOR YOUR SAMPLE DATA 
 citations_file_path = '/Users/laurentfintoni/Desktop/University/COURSE DOCS/YEAR 1/Q1/COMPUTATIONAL THINKING/Project/citations_sample.csv'
@@ -90,7 +91,7 @@ def do_compute_impact_factor(data, dois, year):
     year_int = int(year) 
     year_1 = str(year_int - 1) 
     year_2 = str(year_int - 2)
-    #same as above but this time we look for matches in other columns         
+    #same as above but this time we look for matches between DOIs in citing and cited and the years in their respective creation columns          
     for row in data: 
         for i in dois:       
             if i in row["citing"] and year_1 in row["citing_year"]:
@@ -113,7 +114,7 @@ def do_compute_impact_factor(data, dois, year):
 #A variable with a set of test DOIS for impact factor 
 test_DOIS = {'10.3390/vaccines7040201', '10.3389/fimmu.2018.02532', '10.1007/s00134-019-05862-0', '10.1016/b978-0-323-35761-6.00063-8', '10.1007/s40506-020-00219-4'}
 
-print(do_compute_impact_factor(data, test_DOIS, '2019'))
+#print(do_compute_impact_factor(data, test_DOIS, '2019'))
 
 #FUNCTION 3 (ENRICA)
 
@@ -221,29 +222,36 @@ print(do_get_citation_network(data, '2018', '2020')) """
 #This is a working version w/ dictionary
 
 def do_search_by_prefix(data, prefix, is_citing):
-    if type(prefix) is not str or prefix == '': #return error, prefix is not a string 
+    #return error if prefix input is not a string 
+    if type(prefix) is not str or prefix == '': 
         return 'The prefix must be a string with at least one character \U0001F913.'
-    if type(is_citing) is not bool: #return error, is citing option is not boolean 
-        return 'We need a boolean option \U0001F913.'
-    str_pattern = r'(\d{0,2}\.\d{0,5})'
+    #return error if is_citing input is not boolean
+    if type(is_citing) is not bool:  
+        return 'We need a boolean option for the third input \U0001F913.'
+    #catch eroneous prefix strings w/ regex, all prefix inputs must match 2 digits followed by dot, followed by up to 5 digits
+    str_pattern = r'(\d{2}\.\d{0,5})'
     match = re.match(str_pattern, prefix)
-    if match == None: #catch eroneous prefix strings w/ regex
-        return 'The prefix must be a string with a pattern of 2 digits followed by a full stop and another set of digits \U0001F913.'
-    result = [] #create an empty list for the results 
-    if is_citing: #select the column to do search on based on boolean input 
+    if match == None: 
+        return 'The prefix must be a string with a pattern of 2 digits followed by a full stop and another set of digits up to 5 \U0001F913.'
+    #create an empty list for the results 
+    result = [] 
+    #select the column to do search on based on boolean input 
+    if is_citing: 
         col = 'citing'
     else:
         col = 'cited'
-    for row in data: #search for the prefix in the relevant column of each dict entry and append them to result 
+    #search for the prefix in the relevant column of each dict entry in data and append them to result
+    for row in data:  
         if prefix in row[col]:
             result.append(row[col])
-    if len(result) == 0: #catch if results are empty 
+    #return message if results are empty 
+    if len(result) == 0: 
         return 'There are no results for your search, please try again \U0001F647.'
     else: 
         pretty_result = pprint.pformat(result)
-        return (f'These are the DOIS in {col} that match your prefix: \n {pretty_result}')
+        return (f'These are the DOIS in column \'{col}\' that match your prefix search: \n {pretty_result}')
 
-#print(do_search_by_prefix(data, '10.3928', True))
+#print(do_search_by_prefix(data, '1.3928', True))
 
 #FUNCTION 8 (EVERYONE)
 
@@ -265,16 +273,22 @@ def do_search_by_prefix(data, prefix, is_citing):
 #something about matching different date formats? right now it only match yyyy-mm-dd + still needs wildcard matching and booleans 
 
 def do_search(data, query, field):
-    if type(query) is not str or query == '': #return error query is not a string 
+    #return error if input query is not a string 
+    if type(query) is not str or query == '': 
         return 'The input query must be a string with at least one character \U0001F913.'
-    if type(field) is not str: #return error field is not a string 
+    #return error if input field is not a string 
+    if type(field) is not str: 
         return 'The chosen field for queries must be a string \U0001F913.'
+    #catch eroneous field inputs w/ regex, they can only be one of four
     field_pattern = r'(citing|cited|creation|timespan)'
     field_match = re.match(field_pattern, field)
-    if field_match == None: #catch eroneous field strings w/ regex
+    if field_match == None: 
         return 'The chosen field must be either citing, cited, creation or timespan \U0001F913.'
-    query = query.lower() #lower case input for insensitive match
+    #lower case input for insensitive match
+    query = query.lower() 
+    #initialize an empty result list
     result = []
+    #iterate over input field to find results based on query string, only append citations not dates or timespans
     if field == 'citing':
         search_row = 'citing'
         for row in data:
@@ -295,6 +309,7 @@ def do_search(data, query, field):
         for row in data:
             if query in row[search_row].lower():
                 result.extend([row['citing'], row['cited']])
+    #if the results are empty return error message
     if len(result) == 0:
         return 'There were no citations for your search, please try again \U0001F647.'
     else:
