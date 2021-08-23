@@ -186,6 +186,25 @@ def do_get_bibliographic_coupling(data, doi1, doi2):
 #It returns a directed graph containing all the articles involved in citations if both of them
 #have been published within the input start-end interval (start and end included).
 #Use the DOIs of the articles involved in citations as name of the nodes.
+def do_get_citation_network(data, start, end):
+    G = nx.MultiDiGraph()
+
+    for row in data:
+        if start <= row["citing_year"] <= end and start <= row["cited_year"] <= end:
+            G.add_edge(row['citing'], row['cited'])
+	
+#-------------------------------displays the graph not actually part of the exam---------------------------------------------------------------
+    pos = nx.spring_layout(G)
+    nx.draw_networkx_nodes(G,pos,cmap=plt.get_cmap('Blues'),node_size=300)
+    nx.draw_networkx_edges(G, pos, edgelist=G.edges(), edge_color="green")
+    nx.draw_networkx_labels(G, pos, font_size=9)
+    plt.show()
+#--------------------------------------------------------------------------------------------------------------------------------------------------
+    return G
+
+#print(do_get_citation_network(data, '2016', '2019'))
+
+
 
 #This is a test I did today to return the citing DOIS using dictionary, if you wanna use it 
 
@@ -212,6 +231,14 @@ print(do_get_citation_network(data, '2018', '2020')) """
 #(e.g. both DiGraphs). In case the types of the graphs are different, return None.
 
 #def do_merge_graphs(data, g1, g2)
+def do_merge_graphs(data, g1, g2):
+    if type(g1) is type(g2):
+        new_graph = nx.compose(g1, g2)
+        return new_graph
+    else:
+        return None
+
+#print(do_merge_graphs(data, (do_get_citation_network(data, '2018', '2019')), (do_get_citation_network(data, '2011', '2014'))))
 
 #FUNCTION 7 (LAURENT)
 
