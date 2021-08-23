@@ -315,6 +315,37 @@ def do_search(data, query, field):
         return 'The chosen field must be either citing, cited, creation or timespan \U0001F913.'
     #lower case input for insensitive match
     query = query.lower()
+
+#an idea on how to do booleans, wrote it very fast, I still have to learn how to use regex, I'm putting it here just in case someone is working on the same thing ¯\_(ツ)_/¯ -----------------------------------------------------------------------------------------------------------------------------
+
+    if re.search(r'( and | or | ?not )', query): #check if a boolean is present in query(not sure about syntax)
+        if re.search(r'( and )', query): # if it is 'AND' split query
+            deleted_bool = re.split(r'(and)', query)
+            R = do_search(data, deleted_bool[0], field) #recursion to find first word
+            S = do_search(data, deleted_bool[1], field) ##recursion to find second word
+            if R == None or 'The input query must be a string with at least one character \U0001F913.' or 'The chosen field for queries must be a string \U0001F913.'or 'The chosen field must be either citing, cited, creation or timespan \U0001F913.' or 'There were no citations for your search, please try again \U0001F647.':
+                return None #if first word can't be found we are already done(i used all the negative result we can get, is there a better way?)
+            elif S == None or 'The input query must be a string with at least one character \U0001F913.' or 'The chosen field for queries must be a string \U0001F913.'or 'The chosen field must be either citing, cited, creation or timespan \U0001F913.' or 'There were no citations for your search, please try again \U0001F647.':
+                return None
+            else: #if both words are present delete the "and" from query and retry
+                return do_search(data, deleted_bool, field)
+        if re.search(r'( or )', query): # if it is 'OR' split query
+            or_query = ''
+            for l in query:
+               if l == ' or ':#definitely wrong syntax it's supposed to find "or" and add to the end of both words the regex corresponding to "?" (it has to accept a partial match)
+                    or_query += '?' #If the old query was "red or blue" new query should be "red? blue?"
+               return do_search(data, or_query, field)
+        elif re.search(r'( ?not )', query): #if I find a "NOT" boolean
+            not_word = re.search(r'not \w', query)# I single the word that comes after "NOT" (I also need to delete the NOT actually)
+            N = do_search(data, not_word, field)
+            if N != None or 'The input query must be a string with at least one character \U0001F913.' or 'The chosen field for queries must be a string \U0001F913.' or 'The chosen field must be either citing, cited, creation or timespan \U0001F913.' or 'There were no citations for your search, please try again \U0001F647.':
+                return None #in this case to obtain a positive result i should not find the word
+            else:
+                not_not_query = query - not_word #I have to retry the query without the not_word (I'm pretty shure that's not how you write it)
+                return do_search(data, not_not_query, field)
+	
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
     #check if the query input contains either ? or * wildcards, if so initialize an empty query variable and iterate over the input query to look for wildcards and replace them with equivalent regex value
     if re.search(r'\*|\?', query):
         re_query = ''
