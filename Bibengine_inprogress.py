@@ -332,8 +332,8 @@ def do_search(data, query, field):
         if re.search(r'( or )', query): # if it is 'OR' split query
             or_query = ''
             for l in query:
-               if l == ' or ':#definitely wrong syntax it's supposed to find "or" and add to the end of both words the regex corresponding to "?" (it has to accept a partial match)
-                    or_query += '?' #If the old query was "red or blue" new query should be "red? blue?"
+               if l == ' or ':
+                    or_query += '?' 
                return do_search(data, or_query, field)
         elif re.search(r'( ?not )', query): #if I find a "NOT" boolean
             not_word = re.search(r'not \w', query)# I single the word that comes after "NOT" (I also need to delete the NOT actually)
