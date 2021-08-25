@@ -320,7 +320,7 @@ def do_search(data, query, field):
     
 	if "not" or "and" or "or" in query:
         query_words_list = query.split(" ")
-	not_found = 'The input query must be a string with at least one character \U0001F913.' or 'The chosen field for queries must be a string \U0001F913.' or 'The chosen field must be either citing, cited, creation or timespan \U0001F913.' or 'There were no citations for your search, please try again \U0001F647.'
+	not_found = None or 'The input query must be a string with at least one character \U0001F913.' or 'The chosen field for queries must be a string \U0001F913.' or 'The chosen field must be either citing, cited, creation or timespan \U0001F913.' or 'There were no citations for your search, please try again \U0001F647.'
         if "or" in query_words_list:
             query_words_list.remove("or")
             C = do_search(data, query_words_list[0], field)
