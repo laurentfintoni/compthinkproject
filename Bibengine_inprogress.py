@@ -316,33 +316,46 @@ def do_search(data, query, field):
     #lower case input for insensitive match
     query = query.lower()
 
-#an idea on how to do booleans, wrote it very fast, I still have to learn how to use regex, I'm putting it here just in case someone is working on the same thing ¯\_(ツ)_/¯ -----------------------------------------------------------------------------------------------------------------------------
-
-    if re.search(r'( and | or | ?not )', query): #check if a boolean is present in query(not sure about syntax)
-        if re.search(r'( and )', query): # if it is 'AND' split query
-            deleted_bool = re.split(r'(and)', query)
-            R = do_search(data, deleted_bool[0], field) #recursion to find first word
-            S = do_search(data, deleted_bool[1], field) ##recursion to find second word
-            if R == None or 'The input query must be a string with at least one character \U0001F913.' or 'The chosen field for queries must be a string \U0001F913.'or 'The chosen field must be either citing, cited, creation or timespan \U0001F913.' or 'There were no citations for your search, please try again \U0001F647.':
-                return None #if first word can't be found we are already done(i used all the negative result we can get, is there a better way?)
-            elif S == None or 'The input query must be a string with at least one character \U0001F913.' or 'The chosen field for queries must be a string \U0001F913.'or 'The chosen field must be either citing, cited, creation or timespan \U0001F913.' or 'There were no citations for your search, please try again \U0001F647.':
+#---------------------an idea on how to do booleans, version withot regex, doesn't work yet-----------------------------------------------------------------------------------------------------------------------------
+    
+	if "not" or "and" or "or" in query:
+        query_words_list = query.split(" ")
+	not_found = 'The input query must be a string with at least one character \U0001F913.' or 'The chosen field for queries must be a string \U0001F913.' or 'The chosen field must be either citing, cited, creation or timespan \U0001F913.' or 'There were no citations for your search, please try again \U0001F647.'
+        if "or" in query_words_list:
+            query_words_list.remove("or")
+            C = do_search(data, query_words_list[0], field)
+            D = do_search(data, query_words_list[1], field)
+            if C == not_found and D == not_found:
                 return None
-            else: #if both words are present delete the "and" from query and retry
-                return do_search(data, deleted_bool, field)
-        if re.search(r'( or )', query): # if it is 'OR' split query
-            or_query = ''
-            for l in query:
-               if l == ' or ':
-                    or_query += '?' 
-               return do_search(data, or_query, field)
-        elif re.search(r'( ?not )', query): #if I find a "NOT" boolean
-            not_word = re.search(r'not \w', query)# I single the word that comes after "NOT" (I also need to delete the NOT actually)
-            N = do_search(data, not_word, field)
-            if N != None or 'The input query must be a string with at least one character \U0001F913.' or 'The chosen field for queries must be a string \U0001F913.' or 'The chosen field must be either citing, cited, creation or timespan \U0001F913.' or 'There were no citations for your search, please try again \U0001F647.':
-                return None #in this case to obtain a positive result i should not find the word
+            if C != not_found and D != not_found:
+                return C and D
+            if C != not_found and D == not_found:
+                return C
+            if C == not_found and D != not_found:
+                return D
+        if "and" in query_words_list:
+            query_words_list.remove("and")
+            A = do_search(data, query_words_list[0], field)
+            if A == not_found:
+                return None
             else:
-                not_not_query = query - not_word #I have to retry the query without the not_word (I'm pretty shure that's not how you write it)
-                return do_search(data, not_not_query, field)
+                B = do_search(data, query_words_list[1], field)
+                if B == not_found:
+                    return None
+                else:
+                    return A and B
+
+        elif "not" in query_words_list:
+            pos_not_word = query_words_list.index("not") + 1
+            not_word = query_words_list[pos_not_word]
+            N = do_search(data, not_word, field)
+            if N != not_found:
+                return None
+            else:
+                query_words_list.remove("not")
+                query_words_list.remove(not_word)
+                return do_search(data, query_words_list[0], field)
+   
 	
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
