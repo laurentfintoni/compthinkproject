@@ -24,8 +24,7 @@ def process_citations(citations_file_path):
         citing_year = row['creation']
         row['citing_year'] = citing_year[0:4]
         timespan_str = row['timespan']
-    #create a cited year key/value pair by using datetime computations
-    #Enrica 2021-08-25: I used the external dictionary doi_date_dict for doi:year key/value (and the related function def doi_dates(data, doi, doi_date_dict)) to make faster the compilation and avoid to compute the cited_year for any row when we already have it (if it is also a citing_year) or if we have already computed it for a prevoious cited (doi). I have this method stored if we want to use it 
+    #create a cited year key/value pair by using datetime computations 
         while len(citing_year) < 10:
             citing_year = citing_year + '-01'
         citing_n_date = datetime.strptime(citing_year, '%Y-%m-%d')
@@ -193,7 +192,7 @@ def do_get_citation_network(data, start, end):
     for row in data:
         if start <= row["citing_year"] <= end and start <= row["cited_year"] <= end:
             G.add_edge(row['citing'], row['cited'])
-	#Enrica 2021-08-25: maybe we have also to assigne the names to the nodes "# Use the DOIs of the articles involved in citations as name of the nodes." add_node(a, name=a)
+	
 #-------------------------------displays the graph not actually part of the exam---------------------------------------------------------------
     pos = nx.spring_layout(G)
     nx.draw_networkx_nodes(G,pos,cmap=plt.get_cmap('Blues'),node_size=300)
@@ -303,64 +302,79 @@ def do_search_by_prefix(data, prefix, is_citing):
 #something about matching different date formats? right now it only match yyyy-mm-dd + still needs wildcard matching and booleans 
 
 def do_search(data, query, field):
-    #return error if input query is not a string
-    #Enrica 2021-08-25: cannot we directly change the imput in string for both query and field?
+    #return error if input query is not a string 
     if type(query) is not str or query == '': 
         return 'The input query must be a string with at least one character \U0001F913.'
     #return error if input field is not a string 
     if type(field) is not str: 
         return 'The chosen field for queries must be a string \U0001F913.'
     #catch eroneous field inputs w/ regex, they can only be one of four
-    #Enrica 2021-08-25: it could be useful to also filter on the two new columns citing_year cited_year. I found a way to not specify the value but only their role of keys to search them but I am not able now to find it
     field_pattern = r'(citing|cited|creation|timespan)'
     field_match = re.match(field_pattern, field)
     if field_match == None: 
         return 'The chosen field must be either citing, cited, creation or timespan \U0001F913.'
     #lower case input for insensitive match
-    #Enrica 2021-08-25: we have to put also the field value in lower to be sure, es. timespan
     query = query.lower()
 
-#---------------------an idea on how to do booleans, version withot regex, doesn't work yet-----------------------------------------------------------------------------------------------------------------------------
-    
-	if "not" or "and" or "or" in query:
-        query_words_list = query.split(" ")
-	not_found = None or 'The input query must be a string with at least one character \U0001F913.' or 'The chosen field for queries must be a string \U0001F913.' or 'The chosen field must be either citing, cited, creation or timespan \U0001F913.' or 'There were no citations for your search, please try again \U0001F647.'
+#--------------------------♪┏(・o・)┛--it works now!--♪┏(・o・)┛♪┗ ( ・o・) ┓♪-----------------------------------------------------------------------------------------
+
+    if re.search('not|or|and', query):#check if there is a boolean operator
+        query_words_list = query.split(" ") #split the query into a list of terms
+	#assign a variable to all possible negative outcomes
+        not_found = None or 'this functions accept the use of only one boolean operator, query must have "<tokens 1> <operator> <tokens 2>" format' or 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, the booleans operator seems to be in the wrong place' or 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, there seems to be too many or too little words' or 'not found' or 'The input query must be a string with at least one character \U0001F913.' or 'The chosen field for queries must be a string \U0001F913.' or 'The chosen field must be either citing, cited, creation or timespan \U0001F913.' or 'There were no citations for your search, please try again \U0001F647.'
+        
+
+        #check if the query has the right format ("<tokens 1> <operator> <tokens 2>")
+        if len(query_words_list) != 3: #check if the query contains more or less than tree terms(maybe I should clean wrong whitspaces?)
+            return 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, there seems to be too many or too little words'
+        if not re.match('not|or|and', str(query_words_list[1])):#check if the second term of the query is a bolean
+            return 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, the booleans operator seems to be in the wrong place'
+        if len(re.findall('not|or|and', query)) > 1 : #check if there is more than a bolean
+            return 'this functions accept the use of only one boolean operator, query must have "<tokens 1> <operator> <tokens 2>" format'
+
+        if "and" in query_words_list:
+            query_words_list.remove("and") #remove 'and' from the the terms list
+            A = do_search(data, str(query_words_list[0]), field) # repeat the whole function substituting the single terms of the query to the original query
+            if A == not_found:
+                return 'not found'
+            else:
+                B = do_search(data, str(query_words_list[1]), field)
+                if B == not_found:
+                    return 'not found'
+                else: #if both terms are found return the union of the results
+                    a_set = set(A)
+                    b_set = set(B)
+                    new_result = list(a_set.union(b_set))
+                return new_result #is there a faster way to do this?
+	
         if "or" in query_words_list:
-            query_words_list.remove("or")
-            C = do_search(data, query_words_list[0], field)
-            D = do_search(data, query_words_list[1], field)
+            query_words_list.remove("or")# same procedure with 'or'
+            C = do_search(data, str(query_words_list[0]), field)
+            D = do_search(data, str(query_words_list[1]), field)
             if C == not_found and D == not_found:
-                return None
-            if C != not_found and D != not_found:
-                return C and D
+                return 'not found'
             if C != not_found and D == not_found:
                 return C
             if C == not_found and D != not_found:
                 return D
-        if "and" in query_words_list:
-            query_words_list.remove("and")
-            A = do_search(data, query_words_list[0], field)
-            if A == not_found:
-                return None
-            else:
-                B = do_search(data, query_words_list[1], field)
-                if B == not_found:
-                    return None
-                else:
-                    return A and B
-
-        elif "not" in query_words_list:
-            pos_not_word = query_words_list.index("not") + 1
-            not_word = query_words_list[pos_not_word]
-            N = do_search(data, not_word, field)
-            if N != not_found:
-                return None
-            else:
-                query_words_list.remove("not")
-                query_words_list.remove(not_word)
-                return do_search(data, query_words_list[0], field)
-   
+            if C != not_found and D != not_found:
+                c_set = set(C)#return the results for either single term or the union of results if both terms are foud
+                d_set = set(D)
+                new_result = list(c_set.union(d_set))
+                return new_result #is there a faster way to do this?
 	
+        elif "not" in query_words_list:
+            query_words_list.remove("not") #same procedure(ex : animal not cat )
+            E = do_search(data, str(query_words_list[1]), field)#ANIMAL
+            F = do_search(data, str(query_words_list[0]), field)#CAT
+            if F == not_found:
+                return 'not found'
+            else:
+                e_set = set(E)
+                f_set = set(F)
+                new_result = list(f_set.difference(e_set))#the result is the difference between the first and second term
+                return new_result
+    
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     #check if the query input contains either ? or * wildcards, if so initialize an empty query variable and iterate over the input query to look for wildcards and replace them with equivalent regex value
@@ -378,8 +392,6 @@ def do_search(data, query, field):
         #initialize an empty result list
         result = []
         #iterate over input field to find results based on query string, only append citations not dates or timespans
-	# Enrica 2021-08-25: I am quite sure we have to report the whole row: "It returns a sub-collection of citations in data where the query matched on the input field" > Example of CSV citation data: citing 	cited 	creation 	timespan
-        # In Peroni's slides "citation" seems to me defined as something composed by (citing|cited|creation|timespan)', so a row in the dataset
         if field == 'citing':
             search_row = 'citing'
             for row in data:
@@ -422,38 +434,7 @@ def do_search(data, query, field):
             for row in data:
                 if re.fullmatch(query, row[search_row].lower()):
                     result.extend([row['citing'], row['cited']])
-
-#--------------------- Enrica 2021-08-25: a proposal (still without booleans) using replace instead of regex-----------------------------------------------------------------------------------------------------------------------------
-    def do_search(data, query, field):
-    result = []
-    n_query = query.lower()
-    print(n_query)
-    for row in data:
-        value = row[field]
-        n_value = value.lower()
-	#I can I distinguish if a * or ? are in the actual query string?
-	if '*' or '?' not in query:
-        # come distinguo il wildcard dal carattere stringa???
-            if n_query == n_value:
-                result.append(row)
-        if '*' in n_query:
-            if '?' in n_query:
-                i_query = n_query.replace('*', '.+')
-		#Enrica 2021-08-25 the .+ characters are used to match one or more characters (like the asterisk ∗*∗ symbol) https://www.educative.io/edpresso/how-to-implement-wildcards-in-python
-		re_query = i_query.replace('?', '.')
-            else:
-                re_query = n_query.replace('*', '.+')
-        if '?' in n_query:
-            if '*' not in n_query:
-                re_query = n_query.replace('?', '.')
-        if re.search(re_query, n_value):
-            result.append(row)
-    return result
-
-#---------------------Enrica proposal end-----------------------------------------------------------------------------------------------------------------------------
-   
-
-#if the results are empty return error message
+    #if the results are empty return error message
     if len(result) == 0:
         return 'There were no citations for your search, please try again \U0001F647.'
     else:
@@ -488,7 +469,7 @@ print(do_search(data, '1998?', 'creation'))
 	        subcollection.append(row)
     return subcollection
  """
-#Enrica 2021-08-25: This is new version on data dictionary with comparisons and boolens, really naif in some parts but working! Give it a glance; at the end when all will be working we can compress some parts of the other functions using this:
+#This is new version on data dictionary with comparisons and boolens, really naif in some parts but working! Give it a glance; at the end when all will be working we can compress some parts of the other functions using this:
 
 import operator #See documentation at https://docs.python.org/3/library/operator.html
 c_ops = {'<': operator.lt, '<=': operator.le, '>': operator.gt, '>=': operator.ge, '==': operator.eq, '!=': operator.ne}
