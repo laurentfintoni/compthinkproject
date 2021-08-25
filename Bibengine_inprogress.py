@@ -316,46 +316,64 @@ def do_search(data, query, field):
     #lower case input for insensitive match
     query = query.lower()
 
-#---------------------an idea on how to do booleans, version withot regex, doesn't work yet-----------------------------------------------------------------------------------------------------------------------------
-    
-	if "not" or "and" or "or" in query:
-        query_words_list = query.split(" ")
-	not_found = None or 'The input query must be a string with at least one character \U0001F913.' or 'The chosen field for queries must be a string \U0001F913.' or 'The chosen field must be either citing, cited, creation or timespan \U0001F913.' or 'There were no citations for your search, please try again \U0001F647.'
+#--------------------------♪┏(・o・)┛--it works now!--♪┏(・o・)┛♪┗ ( ・o・) ┓♪-----------------------------------------------------------------------------------------
+
+    if re.search('not|or|and', query):#check if there is a boolean operator
+        query_words_list = query.split(" ") #split the query into a list of terms
+	#assign a variable to all possible negative outcomes
+        not_found = None or 'this functions accept the use of only one boolean operator, query must have "<tokens 1> <operator> <tokens 2>" format' or 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, the booleans operator seems to be in the wrong place' or 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, there seems to be too many or too little words' or 'not found' or 'The input query must be a string with at least one character \U0001F913.' or 'The chosen field for queries must be a string \U0001F913.' or 'The chosen field must be either citing, cited, creation or timespan \U0001F913.' or 'There were no citations for your search, please try again \U0001F647.'
+        
+
+        #check if the query has the right format ("<tokens 1> <operator> <tokens 2>")
+        if len(query_words_list) != 3: #check if the query contains more or less than tree terms(maybe I should clean wrong whitspaces?)
+            return 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, there seems to be too many or too little words'
+        if not re.match('not|or|and', str(query_words_list[1])):#check if the second term of the query is a bolean
+            return 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, the booleans operator seems to be in the wrong place'
+        if len(re.findall('not|or|and', query)) > 1 : #check if there is more than a bolean
+            return 'this functions accept the use of only one boolean operator, query must have "<tokens 1> <operator> <tokens 2>" format'
+
+        if "and" in query_words_list:
+            query_words_list.remove("and") #remove 'and' from the the terms list
+            A = do_search(data, str(query_words_list[0]), field) # repeat the whole function substituting the single terms of the query to the original query
+            if A == not_found:
+                return 'not found'
+            else:
+                B = do_search(data, str(query_words_list[1]), field)
+                if B == not_found:
+                    return 'not found'
+                else: #if both terms are found return the union of the results
+                    a_set = set(A)
+                    b_set = set(B)
+                    new_result = list(a_set.union(b_set))
+                return new_result #is there a faster way to do this?
         if "or" in query_words_list:
-            query_words_list.remove("or")
-            C = do_search(data, query_words_list[0], field)
-            D = do_search(data, query_words_list[1], field)
+            query_words_list.remove("or")# same procedure with 'or'
+            C = do_search(data, str(query_words_list[0]), field)
+            D = do_search(data, str(query_words_list[1]), field)
             if C == not_found and D == not_found:
-                return None
-            if C != not_found and D != not_found:
-                return C and D
+                return 'not found'
             if C != not_found and D == not_found:
                 return C
             if C == not_found and D != not_found:
                 return D
-        if "and" in query_words_list:
-            query_words_list.remove("and")
-            A = do_search(data, query_words_list[0], field)
-            if A == not_found:
-                return None
-            else:
-                B = do_search(data, query_words_list[1], field)
-                if B == not_found:
-                    return None
-                else:
-                    return A and B
-
+            if C != not_found and D != not_found:
+                c_set = set(C)#return the results for either single term or the union of results if both terms are foud
+                d_set = set(D)
+                new_result = list(c_set.union(d_set))
+                return new_result #is there a faster way to do this?
         elif "not" in query_words_list:
-            pos_not_word = query_words_list.index("not") + 1
-            not_word = query_words_list[pos_not_word]
-            N = do_search(data, not_word, field)
-            if N != not_found:
-                return None
+            query_words_list.remove("not") #same procedure(ex : animal not cat )
+            E = do_search(data, str(query_words_list[1]), field)#ANIMAL
+            F = do_search(data, str(query_words_list[0]), field)#CAT
+            if F == not_found:
+                return 'not found'
             else:
-                query_words_list.remove("not")
-                query_words_list.remove(not_word)
-                return do_search(data, query_words_list[0], field)
-   
+                e_set = set(E)
+                f_set = set(F)
+                new_result = list(f_set.difference(e_set))#the result is the difference between the first and second term
+                return new_result
+    
+	
 	
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
