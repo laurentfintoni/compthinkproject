@@ -425,7 +425,7 @@ def do_search(data, query, field):
 
 print(do_search(data, '1998?', 'creation'))
 
-#FUNCTION 9 (EVERYONE>ENRICA)
+#FUNCTION 9 DO_FILTER_BY_VALUE (EVERYONE>ENRICA)
 
 #data: the data returned by process_citations or by other search/filter activities
 #query: a string defining the query to do on the data
@@ -451,3 +451,56 @@ print(do_search(data, '1998?', 'creation'))
 	        subcollection.append(row)
     return subcollection
  """
+#This is new version on data dictionary with comparisons and boolens, really naif in some parts but working! Give it a glance; at the end when all will be working we can compress some parts of the other functions using this:
+
+import operator #See documentation at https://docs.python.org/3/library/operator.html
+c_ops = {'<': operator.lt, '<=': operator.le, '>': operator.gt, '>=': operator.ge, '==': operator.eq, '!=': operator.ne}
+#b_ops = {'and' : operator.and_, 'or' : operator.or_, 'not' : operator.not_} unfortunately not usable because they does not work as comparisons operators, we cannot use them as functions with arguments
+def do_filter_by_value(data, query, field):
+    #I did not put any control at the beginnig on string format or values to add but we can add them, similarly to do_search
+    subcollection = []
+    n_query = query.lower()
+    for row in data:
+        value = row[field]
+        n_value = value.lower()
+        if not re.search('<|>|<=|>=|==|!=|and|or|not', n_query):
+            # I assume these carachters are never used for the actual string to query
+            if n_value == n_query:
+                subcollection.append(row)
+        else:
+            spl_query = re.split(' ', n_query)
+            #Assuming all the strings have to be written as Peroni said "<operator> <tokens>" if comparisons, "<tokens 1> <operator> <tokens 2>" if boolean
+            #Used space to split, and 2-lenght list for if comaprisons, and 3-lenght list if with boolean
+            #Not used string.partition(value) because is not working with regex, so, impossible to say string.partition('and|or|not') or re.partition('and|or|not', string)
+            #Possible problem: if a space is part of the actual string to query
+            #es. '2029 OR 2028' = ['2019', 'or', '2018']
+            if len(spl_query) == 2:
+                #when comparison is used: "<operator> <tokens>" es. '< 2019'
+                co_ops = c_ops[spl_query[0]]
+                #take the string of the operator, compare it with the key in the c_ops dictionary to have back an operator and be able to perform a check Operator(value1, value2)
+                v_query = spl_query[1]
+                if co_ops(n_value, v_query):
+                    subcollection.append(row)
+            if len(spl_query) == 3:
+                #when boolean is used: "<tokens 1> <operator> <tokens 2>" es. '2019 or 2018'
+                v1_query = spl_query[0]
+                v2_query = spl_query[2]
+                #I cannot find a solution as for the comparison operators
+                if spl_query[1] == 'and':
+                    if n_value == v1_query and n_value == v2_query:
+                        subcollection.append(row)
+                if spl_query[1] == 'or':
+                    if n_value == v1_query or n_value == v2_query:
+                        subcollection.append(row)
+                if spl_query[1] == 'not':
+                    if n_value == v1_query and not n_value == v2_query:
+                        subcollection.append(row)
+    return subcollection
+
+'''data1 = [{'citing': '10.3390/vaccines7040201', 'cited': '10.3390/vaccines3010137', 'creation': '2019-11-29', 'timespan': 'P4Y9M3D', 'citing_year': '2019', 'cited_year': '2015'}, {'citing': '10.3390/vaccines7040201', 'cited': '10.4161/hv.26036', 'creation': '2019-11-29', 'timespan': 'P5Y11M28D', 'citing_year': '2019', 'cited_year': '2013'}, {'citing': '10.3390/vaccines7040201', 'cited': '10.7861/clinmedicine.17-6-484', 'creation': '2019-11-29', 'timespan': 'P1Y11M', 'citing_year': '2019', 'cited_year': '2017'}, {'citing': '10.3390/vaccines8020154', 'cited': '10.3390/vaccines7040201', 'creation': '2020-03-30', 'timespan': 'P0Y4M1D', 'citing_year': '2020', 'cited_year': '2019'}, {'citing': '10.3390/vaccines8040600', 'cited': '10.3390/vaccines7040201', 'creation': '2020-10-12', 'timespan': 'P0Y10M13D', 'citing_year': '2020', 'cited_year': '2019'}]
+#query1 = 'p4Y9m3D'
+query2 = '2019 OR 2017'
+query3 = '> 2012'
+field1 = 'cited_year'
+
+print(do_filter_by_value(data1, query2, field1))'''
