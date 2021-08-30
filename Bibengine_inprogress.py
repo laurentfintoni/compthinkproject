@@ -2,6 +2,8 @@
 import csv #to read the data
 import re #to use regex
 import pprint #to make things pretty because life is beautiful 
+import networkx as nx 
+import matplotlib.pyplot as plt
 from datetime import datetime #to compute cited years
 from dateutil.relativedelta import relativedelta
 
@@ -61,21 +63,19 @@ data = process_citations(citations_file_path)
 #The IF of a set of documents dois on a year year is computed by counting the number of citations all
 #the documents in dois have received in year year, and then dividing such a value by the number of
 #documents in dois published in the previous two years (i.e. in year-1 and year-2)"""
- 
-#NEEDS TO ADD SEARCH FOR TIMESPAN COLUMN AS PER ENRICA SUGGESTION (LO)
 
 def do_compute_impact_factor(data, dois, year):
-    #return error if year isn't a string 
+    #return error if year isn't a string + catch eroneous year string w/ regex
     if type(year) is not str or year == '': 
         return 'The year input must be a string with four characters \U0001F645.' 
+    else:
+        str_pattern = r'(\d{4}$)'
+        match = re.fullmatch(str_pattern, year)
+        if match == None: 
+            return 'The year must be a string with a YYYY format \U0001F913.'
     #return error if set is empty 
     if len(dois) == 0: 
         return 'There are no input DOIS \U0001F645.'
-    #catch eroneous year string w/ regex
-    str_pattern = r'(\d{4}$)'
-    match = re.match(str_pattern, year)
-    if match == None: 
-        return 'The year must be a string with a YYYY format \U0001F913.'
     #create a variable to count citations 
     citations_count = 0 
     #look at all dict instances in list and DOIS in input
@@ -106,7 +106,7 @@ def do_compute_impact_factor(data, dois, year):
                 docs_published +=1
     #return error if count is empty, also avoids ZeroDivisionError 
     if docs_published == 0: 
-        return 'There are no published documents in the previous two years to compute Impact Factor with \U0001F622.'
+        return 'There are no published documents in the previous two years to compute the Impact Factor with \U0001F622.'
     else: 
         #Calculate IF and round it up to 2 decimal points
         impact_factor = round(citations_count / docs_published, 2)
@@ -116,7 +116,7 @@ def do_compute_impact_factor(data, dois, year):
 #A variable with a set of test DOIS for impact factor 
 test_DOIS = {'10.3390/vaccines7040201', '10.3389/fimmu.2018.02532', '10.1007/s00134-019-05862-0', '10.1016/b978-0-323-35761-6.00063-8', '10.1007/s40506-020-00219-4'}
 
-#print(do_compute_impact_factor(data, test_DOIS, '2019'))
+#print(do_compute_impact_factor(data, test_DOIS, '2018'))
 
 #FUNCTION 3 (ENRICA)
 
@@ -125,12 +125,13 @@ test_DOIS = {'10.3390/vaccines7040201', '10.3389/fimmu.2018.02532', '10.1007/s00
 #doi2: the DOI string of the second article
 #It returns an integer defining how many times the two input documents are cited together by other documents.
 
-#This is an Enrica woking dictionary version using do_filter_by_value function:
 def do_get_co_citations(data, doi1, doi2):
+    #return error if doi inputs are not strings or are empty 
     if type(doi1) is not str or doi1 == '': #return error if doi isn't a string 
         return 'The first doi input must be a string with at least one character \U0001F645.'
     if type(doi2) is not str or doi2 == '': #return error if doi isn't a string 
         return 'The second doi input must be a string with at least one character \U0001F645.'
+    #initialize two empty lists, look for citations and store them in list
     doi1sublist = []
     doi2sublist = []
     for row in data:
@@ -138,7 +139,9 @@ def do_get_co_citations(data, doi1, doi2):
             doi1sublist.append(row)
         if row['cited'] == doi2:
             doi2sublist.append(row)
+    #create variable to count joint citations 
     co_citations = 0
+    #look for joint citations and count them
     for doiA in doi1sublist:
         for doiB in doi2sublist:
             if doiA['citing'] == doiB['citing']:
@@ -154,15 +157,15 @@ def do_get_co_citations(data, doi1, doi2):
 #doi2: the DOI string of the first article
 #It returns an integer defining how many times the two input documents cite both the same document.
 
-#def do_get_bibliographic_coupling(data, doi1, doi2)
-#This is an Enrica working dictionaryversion using do_filter_by_value function; 
-#maybe it could be more economic for the code (?) writing just one different function to be recalled with the different value of cited VS citing:
+#maybe it could be more economic for the code (?) writing just one different function to be recalled with the different value of cited VS citing
 
 def do_get_bibliographic_coupling(data, doi1, doi2):
+    #return error if doi inputs are not strings or are empty 
     if type(doi1) is not str or doi1 == '': #return error if doi isn't a string 
         return 'The first doi input must be a string with at least one character \U0001F645.'
     if type(doi2) is not str or doi2 == '': #return error if doi isn't a string 
         return 'The second doi input must be a string with at least one character \U0001F645.'
+    #initialize two empty lists, look for citations and store them in list    
     doi1sublist = []
     doi2sublist = []
     for row in data:
@@ -170,12 +173,16 @@ def do_get_bibliographic_coupling(data, doi1, doi2):
             doi1sublist.append(row)
         if row['citing'] == doi2:
             doi2sublist.append(row)
+    #create variable to count joint citations
     bibliographic_coupling = 0
+    #look for joint citations and count them
     for doiA in doi1sublist:
         for doiB in doi2sublist:
             if doiA['cited'] == doiB['cited']:
                 bibliographic_coupling += 1
     return (f'The total number of shared citations by the input documents is: {bibliographic_coupling}.')
+
+#print(do_get_bibliographic_coupling(data, '10.1007/978-1-4614-7438-8_5', '10.2217/cer-2016-0035'))
 
 #FUNCTION 5 (CAMILLA)
 
@@ -186,9 +193,29 @@ def do_get_bibliographic_coupling(data, doi1, doi2):
 #It returns a directed graph containing all the articles involved in citations if both of them
 #have been published within the input start-end interval (start and end included).
 #Use the DOIs of the articles involved in citations as name of the nodes.
-def do_get_citation_network(data, start, end):
-    G = nx.MultiDiGraph()
 
+def do_get_citation_network(data, start, end):
+    #catch if end is before start 
+    if end < start:
+        return 'The end year must be after the start year \U0001F645.'
+    #return error if start/end inputs aren't a string + catch eroneous strings w/ regex
+    if type(start) is not str or start == '': 
+        return 'The start year input must be a string with four characters \U0001F645.'
+    else: 
+        str_pattern = r'(\d{4}$)'
+        match = re.fullmatch(str_pattern, start)
+        if match == None: 
+            return 'The start year must be a string with a YYYY format \U0001F913.'
+    if type(end) is not str or end == '': 
+        return 'The end year input must be a string with four characters \U0001F645.'
+    else: 
+        str_pattern = r'(\d{4}$)'
+        match = re.fullmatch(str_pattern, end)
+        if match == None: 
+            return 'The end year must be a string with a YYYY format \U0001F913.'
+    #intiliaze graph 
+    G = nx.MultiDiGraph()
+    #populate graph w/ relevant inputs 
     for row in data:
         if start <= row["citing_year"] <= end and start <= row["cited_year"] <= end:
             G.add_edge(row['citing'], row['cited'])
@@ -202,25 +229,7 @@ def do_get_citation_network(data, start, end):
 #--------------------------------------------------------------------------------------------------------------------------------------------------
     return G
 
-#print(do_get_citation_network(data, '2016', '2019'))
-
-
-
-#This is a test I did today to return the citing DOIS using dictionary, if you wanna use it 
-
-""" def do_get_citation_network(data, start, end):
-    timediff = [year for year in range(int(start), int(end)+1)] 
-    citinglist = []
-    for row in data:
-        for i in timediff:
-            if str(i) in row["creation"]:
-                citinglist.append(row)
-    number = int(end) - int(start)
-
-    return number
-
-print(do_get_citation_network(data, '2018', '2020')) """
-
+#print(do_get_citation_network(data, '2015', '2019'))
 
 #FUNCTION 6 (CAMILLA)
 
@@ -230,7 +239,6 @@ print(do_get_citation_network(data, '2018', '2020')) """
 #It returns a new graph being the merge of the two input graphs if these are of the same type
 #(e.g. both DiGraphs). In case the types of the graphs are different, return None.
 
-#def do_merge_graphs(data, g1, g2)
 def do_merge_graphs(data, g1, g2):
     if type(g1) is type(g2):
         new_graph = nx.compose(g1, g2)
@@ -238,7 +246,9 @@ def do_merge_graphs(data, g1, g2):
     else:
         return None
 
-#print(do_merge_graphs(data, (do_get_citation_network(data, '2018', '2019')), (do_get_citation_network(data, '2011', '2014'))))
+#test_graph_1 = do_get_citation_network(data, '2018', '2019')
+#test_graph_2 = do_get_citation_network(data, '2015', '2019')
+#print(do_merge_graphs(data, test_graph_1, test_graph_2))
 
 #FUNCTION 7 (LAURENT)
 
@@ -251,17 +261,17 @@ def do_merge_graphs(data, g1, g2):
 #This is a working version w/ dictionary
 
 def do_search_by_prefix(data, prefix, is_citing):
-    #return error if prefix input is not a string 
+    #return error if prefix input is not a string + catch eroneous prefix strings w/ regex
     if type(prefix) is not str or prefix == '': 
         return 'The prefix must be a string with at least one character \U0001F913.'
+    else:
+        str_pattern = r'(\d{2}\.\d{0,5})'
+        match = re.fullmatch(str_pattern, prefix)
+        if match == None: 
+            return 'The prefix must be a string with a pattern of 2 digits followed by a full stop and another set of digits up to 5 \U0001F913.'
     #return error if is_citing input is not boolean
     if type(is_citing) is not bool:  
-        return 'We need a boolean option for the third input \U0001F913.'
-    #catch eroneous prefix strings w/ regex, all prefix inputs must match 2 digits followed by dot, followed by up to 5 digits
-    str_pattern = r'(\d{2}\.\d{0,5})'
-    match = re.match(str_pattern, prefix)
-    if match == None: 
-        return 'The prefix must be a string with a pattern of 2 digits followed by a full stop and another set of digits up to 5 \U0001F913.'
+        return 'We need a boolean option for the third input \U0001F913.'    
     #create an empty list for the results 
     result = [] 
     #select the column to do search on based on boolean input 
@@ -280,7 +290,7 @@ def do_search_by_prefix(data, prefix, is_citing):
         pretty_result = pprint.pformat(result)
         return (f'These are the DOIS in column \'{col}\' that match your prefix search: \n {pretty_result}')
 
-#print(do_search_by_prefix(data, '1.3928', True))
+#print(do_search_by_prefix(data, '10.2217', True))
 
 #FUNCTION 8 (EVERYONE)
 
@@ -305,33 +315,33 @@ def do_search(data, query, field):
     #return error if input query is not a string 
     if type(query) is not str or query == '': 
         return 'The input query must be a string with at least one character \U0001F913.'
-    #return error if input field is not a string 
+    #return error if input field is not a string + catch eroneous field inputs w/ regex 
     if type(field) is not str: 
         return 'The chosen field for queries must be a string \U0001F913.'
-    #catch eroneous field inputs w/ regex, they can only be one of four
-    field_pattern = r'(citing|cited|creation|timespan)'
-    field_match = re.match(field_pattern, field)
-    if field_match == None: 
-        return 'The chosen field must be either citing, cited, creation or timespan \U0001F913.'
+    else:
+        field_pattern = r'(citing|cited|creation|timespan)'
+        field_match = re.fullmatch(field_pattern, field)
+        if field_match == None: 
+            return 'The chosen field must be either citing, cited, creation or timespan \U0001F913.'    
     #lower case input for insensitive match
     query = query.lower()
 
 #--------------------------♪┏(・o・)┛--it works now!--♪┏(・o・)┛♪┗ ( ・o・) ┓♪-----------------------------------------------------------------------------------------
-
-    if re.search('not|or|and', query):#check if there is a boolean operator
-        query_words_list = query.split(" ") #split the query into a list of terms
+    #check if there is a boolean operator in query and split the query into a list of terms
+    if re.search('not|or|and', query):
+        query_words_list = query.split(" ") 
 	#assign a variable to all possible negative outcomes
-        not_found = None or 'this functions accept the use of only one boolean operator, query must have "<tokens 1> <operator> <tokens 2>" format' or 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, the booleans operator seems to be in the wrong place' or 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, there seems to be too many or too little words' or 'not found' or 'The input query must be a string with at least one character \U0001F913.' or 'The chosen field for queries must be a string \U0001F913.' or 'The chosen field must be either citing, cited, creation or timespan \U0001F913.' or 'There were no citations for your search, please try again \U0001F647.'
-        
-
+        not_found = None or 'this function accepts the use of only one boolean operator, query must have "<tokens 1> <operator> <tokens 2>" format' or 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, the booleans operator seems to be in the wrong place' or 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, there seems to be too many or too little words' or 'not found' or 'The input query must be a string with at least one character \U0001F913.' or 'The chosen field for queries must be a string \U0001F913.' or 'The chosen field must be either citing, cited, creation or timespan \U0001F913.' or 'There were no citations for your search, please try again \U0001F647.'
         #check if the query has the right format ("<tokens 1> <operator> <tokens 2>")
-        if len(query_words_list) != 3: #check if the query contains more or less than tree terms(maybe I should clean wrong whitspaces?)
+        #check if the query contains more or less than tree terms(maybe I should clean wrong whitspaces?)
+        if len(query_words_list) != 3: 
             return 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, there seems to be too many or too little words'
-        if not re.match('not|or|and', str(query_words_list[1])):#check if the second term of the query is a bolean
+        #check if the second term of the query is a bolean
+        if not re.match('not|or|and', str(query_words_list[1])):
             return 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, the booleans operator seems to be in the wrong place'
-        if len(re.findall('not|or|and', query)) > 1 : #check if there is more than a bolean
+        #check if there is more than a bolean
+        if len(re.findall('not|or|and', query)) > 1 : 
             return 'this functions accept the use of only one boolean operator, query must have "<tokens 1> <operator> <tokens 2>" format'
-
         if "and" in query_words_list:
             query_words_list.remove("and") #remove 'and' from the the terms list
             A = do_search(data, str(query_words_list[0]), field) # repeat the whole function substituting the single terms of the query to the original query
@@ -441,7 +451,7 @@ def do_search(data, query, field):
         pretty_result = pprint.pformat(result)
         return (f'These are the matching citations for query \'{query}\' in field \'{field}\': \n {pretty_result}')
 
-print(do_search(data, '1998?', 'creation'))
+print(do_search(data, '1998 and 10.1016', 'creation'))
 
 #FUNCTION 9 DO_FILTER_BY_VALUE (EVERYONE>ENRICA)
 
