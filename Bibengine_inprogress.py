@@ -4,6 +4,7 @@ import re #to use regex
 import pprint #to make things pretty because life is beautiful 
 import networkx as nx 
 import matplotlib.pyplot as plt
+import operator 
 from datetime import datetime #to compute cited years
 from dateutil.relativedelta import relativedelta
 
@@ -282,15 +283,14 @@ def do_search_by_prefix(data, prefix, is_citing):
     #search for the prefix in the relevant column of each dict entry in data and append them to result
     for row in data:  
         if prefix in row[col]:
-            result.append(row[col])
+            result.append(row)
     #return message if results are empty 
     if len(result) == 0: 
         return 'There are no results for your search, please try again \U0001F647.'
     else: 
-        pretty_result = pprint.pformat(result)
-        return (f'These are the DOIS in column \'{col}\' that match your prefix search: \n {pretty_result}')
+        return (f'These are the DOIS in column \'{col}\' that match your prefix search: \n {pprint.pformat(result)}')
 
-#print(do_search_by_prefix(data, '10.2217', True))
+#print(do_search_by_prefix(data, '10.3821', False))
 
 #FUNCTION 8 (EVERYONE)
 
@@ -325,8 +325,7 @@ def do_search(data, query, field):
             return 'The chosen field must be either citing, cited, creation or timespan \U0001F913.'    
     #lower case input for insensitive match
     query = query.lower()
-
-#--------------------------♪┏(・o・)┛--it works now!--♪┏(・o・)┛♪┗ ( ・o・) ┓♪-----------------------------------------------------------------------------------------
+    #--------------------------♪┏(・o・)┛--it works now!--♪┏(・o・)┛♪┗ ( ・o・) ┓♪-----------------------------------------------------------------------------------------
     #check if there is a boolean operator in query and split the query into a list of terms
     if re.search('not|or|and', query):
         query_words_list = query.split(" ") 
@@ -385,8 +384,7 @@ def do_search(data, query, field):
                 new_result = list(f_set.difference(e_set))#the result is the difference between the first and second term
                 return new_result
     
-#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ 
     #check if the query input contains either ? or * wildcards, if so initialize an empty query variable and iterate over the input query to look for wildcards and replace them with equivalent regex value
     if re.search(r'\*|\?', query):
         re_query = ''
@@ -401,57 +399,18 @@ def do_search(data, query, field):
                 re_query += l 
         #initialize an empty result list
         result = []
-        #iterate over input field to find results based on query string, only append citations not dates or timespans
-        if field == 'citing':
-            search_row = 'citing'
-            for row in data:
-                if re.search(re_query, row[search_row].lower()):
-                    result.append(row[search_row])                
-        elif field == 'cited':
-            search_row = 'cited'
-            for row in data:
-                if re.search(re_query, row[search_row].lower()):
-                    result.append(row[search_row])   
-        elif field == 'creation':
-            search_row = 'creation'
-            for row in data:
-                if re.search(re_query, row[search_row].lower()):
-                    result.extend([row['citing'], row['cited']])   
-        else:
-            search_row = 'timespan'
-            for row in data:
-                if re.search(query, row[search_row].lower()):
-                    result.extend([row['citing'], row['cited']]) 
+        #iterate over data using input field as col, append results
+        for row in data:
+            if re.search(re_query, row[field].lower()):
+                result.append(row)                
     else:
         result = []
-        if field == 'citing':
-            search_row = 'citing'
-            for row in data:
-                if re.fullmatch(query, row[search_row].lower()):
-                    result.append(row[search_row])                
-        elif field == 'cited':
-            search_row = 'cited'
-            for row in data:
-                if re.fullmatch(query, row[search_row].lower()):
-                    result.append(row[search_row])   
-        elif field == 'creation':
-            search_row = 'creation'
-            for row in data:
-                if re.fullmatch(query, row[search_row].lower()):
-                    result.extend([row['citing'], row['cited']])   
-        else:
-            search_row = 'timespan'
-            for row in data:
-                if re.fullmatch(query, row[search_row].lower()):
-                    result.extend([row['citing'], row['cited']])
-    #if the results are empty return error message
-    if len(result) == 0:
-        return 'There were no citations for your search, please try again \U0001F647.'
-    else:
-        pretty_result = pprint.pformat(result)
-        return (f'These are the matching citations for query \'{query}\' in field \'{field}\': \n {pretty_result}')
+        for row in data:
+            if re.fullmatch(query, row[field].lower()):
+                result.append(row)                
+    return (f'These are the matching citations for query \'{query}\' in field \'{field}\': \n {pprint.pformat(result)}')
 
-print(do_search(data, '1998 and 10.1016', 'creation'))
+print(do_search(data, 'vaccin*s', 'citing'))
 
 #FUNCTION 9 DO_FILTER_BY_VALUE (EVERYONE>ENRICA)
 
@@ -481,17 +440,18 @@ print(do_search(data, '1998 and 10.1016', 'creation'))
  """
 #This is new version on data dictionary with comparisons and boolens, really naif in some parts but working! Give it a glance; at the end when all will be working we can compress some parts of the other functions using this:
 
-import operator #See documentation at https://docs.python.org/3/library/operator.html
-c_ops = {'<': operator.lt, '<=': operator.le, '>': operator.gt, '>=': operator.ge, '==': operator.eq, '!=': operator.ne}
+
+
 #b_ops = {'and' : operator.and_, 'or' : operator.or_, 'not' : operator.not_} unfortunately not usable because they does not work as comparisons operators, we cannot use them as functions with arguments
 def do_filter_by_value(data, query, field):
     #I did not put any control at the beginnig on string format or values to add but we can add them, similarly to do_search
+    c_ops = {'<': operator.lt, '<=': operator.le, '>': operator.gt, '>=': operator.ge, '==': operator.eq, '!=': operator.ne}
     subcollection = []
     n_query = query.lower()
     for row in data:
         value = row[field]
         n_value = value.lower()
-        if not re.search('<|>|<=|>=|==|!=|and|or|not', n_query):
+        if not re.search('<|>|<=|>=|==|!=| and | or | not ', n_query):
             # I assume these carachters are never used for the actual string to query
             if n_value == n_query:
                 subcollection.append(row)
@@ -529,6 +489,9 @@ def do_filter_by_value(data, query, field):
 #query1 = 'p4Y9m3D'
 query2 = '2019 OR 2017'
 query3 = '> 2012'
-field1 = 'cited_year'
+field1 = 'cited_year'''
 
-print(do_filter_by_value(data1, query2, field1))'''
+#print(do_filter_by_value(data, 'vaccine OR e', 'cited'))
+
+
+
