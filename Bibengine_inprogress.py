@@ -330,7 +330,7 @@ def do_search(data, query, field):
     if re.search('not|or|and', query):
         query_words_list = query.split(" ")
 
-        # check if the query contains more or less than tree terms(maybe I should clean wrong whitspaces?)
+        # check if the query contains more or less than tree terms
         if len(query_words_list) != 3:
             return 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, there seems to be too many or too little words'
         # check if the second term of the query is a bolean
@@ -341,9 +341,9 @@ def do_search(data, query, field):
             return 'this functions accept the use of only one boolean operator, query must have "<tokens 1> <operator> <tokens 2>" format'
 
         if "and" in query_words_list:
-            term_1 = do_search(data, str(query_words_list[0]),field)
+            term_1 = do_search(data, str(query_words_list[0]),field)# repeat the whole function substituting the single terms of the query to the original query
             if term_1 == []:
-             return []# repeat the whole function substituting the single terms of the query to the original query
+             return []
             else:
                 term_2 = do_search(data, str(query_words_list[1]),field)
                 term_1.extend(term_2)
