@@ -325,65 +325,48 @@ def do_search(data, query, field):
             return 'The chosen field must be either citing, cited, creation or timespan \U0001F913.'    
     #lower case input for insensitive match
     query = query.lower()
-    #--------------------------♪┏(・o・)┛--it works now!--♪┏(・o・)┛♪┗ ( ・o・) ┓♪-----------------------------------------------------------------------------------------
-    #check if there is a boolean operator in query and split the query into a list of terms
+# -------------------------------------------------------------------------------------------------------------------
+    # check if there is a boolean operator in query and split the query into a list of terms
     if re.search('not|or|and', query):
-        query_words_list = query.split(" ") 
-	#assign a variable to all possible negative outcomes
-        not_found = None or 'this function accepts the use of only one boolean operator, query must have "<tokens 1> <operator> <tokens 2>" format' or 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, the booleans operator seems to be in the wrong place' or 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, there seems to be too many or too little words' or 'not found' or 'The input query must be a string with at least one character \U0001F913.' or 'The chosen field for queries must be a string \U0001F913.' or 'The chosen field must be either citing, cited, creation or timespan \U0001F913.' or 'There were no citations for your search, please try again \U0001F647.'
-        #check if the query has the right format ("<tokens 1> <operator> <tokens 2>")
-        #check if the query contains more or less than tree terms(maybe I should clean wrong whitspaces?)
-        if len(query_words_list) != 3: 
+        query_words_list = query.split(" ")
+
+        # check if the query contains more or less than tree terms(maybe I should clean wrong whitspaces?)
+        if len(query_words_list) != 3:
             return 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, there seems to be too many or too little words'
-        #check if the second term of the query is a bolean
+        # check if the second term of the query is a bolean
         if not re.match('not|or|and', str(query_words_list[1])):
             return 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, the booleans operator seems to be in the wrong place'
-        #check if there is more than a bolean
-        if len(re.findall('not|or|and', query)) > 1 : 
+        # check if there is more than a bolean
+        if len(re.findall('not|or|and', query)) > 1:
             return 'this functions accept the use of only one boolean operator, query must have "<tokens 1> <operator> <tokens 2>" format'
+
         if "and" in query_words_list:
-            query_words_list.remove("and") #remove 'and' from the the terms list
-            A = do_search(data, str(query_words_list[0]), field) # repeat the whole function substituting the single terms of the query to the original query
-            if A == not_found:
-                return 'not found'
+            term_1 = do_search(data, str(query_words_list[0]),field)
+            if term_1 == []:
+             return []# repeat the whole function substituting the single terms of the query to the original query
             else:
-                B = do_search(data, str(query_words_list[1]), field)
-                if B == not_found:
-                    return 'not found'
-                else: #if both terms are found return the union of the results
-                    a_set = set(A)
-                    b_set = set(B)
-                    new_result = list(a_set.union(b_set))
-                return new_result #is there a faster way to do this?
-	
+                term_2 = do_search(data, str(query_words_list[1]),field)
+                term_1.extend(term_2)
+                return term_1
+
         if "or" in query_words_list:
-            query_words_list.remove("or")# same procedure with 'or'
-            C = do_search(data, str(query_words_list[0]), field)
-            D = do_search(data, str(query_words_list[1]), field)
-            if C == not_found and D == not_found:
-                return 'not found'
-            if C != not_found and D == not_found:
-                return C
-            if C == not_found and D != not_found:
-                return D
-            if C != not_found and D != not_found:
-                c_set = set(C)#return the results for either single term or the union of results if both terms are foud
-                d_set = set(D)
-                new_result = list(c_set.union(d_set))
-                return new_result #is there a faster way to do this?
-	
+            term_1 = do_search(data, str(query_words_list[0]), field)
+            term_2 = do_search(data, str(query_words_list[1]), field)
+            term_1.extend(term_2)
+            return term_1
+
         elif "not" in query_words_list:
-            query_words_list.remove("not") #same procedure(ex : animal not cat )
-            E = do_search(data, str(query_words_list[1]), field)#ANIMAL
-            F = do_search(data, str(query_words_list[0]), field)#CAT
-            if F == not_found:
-                return 'not found'
+            query_words_list.remove("not")  # same procedure(ex : animal not cat )
+            term_1 = do_search(data, str(query_words_list[1]), field)  # ANIMAL
+            term_2 = do_search(data, str(query_words_list[0]), field)  # CAT
+            if term_2 == []:
+                return []
             else:
-                e_set = set(E)
-                f_set = set(F)
-                new_result = list(f_set.difference(e_set))#the result is the difference between the first and second term
-                return new_result
-    
+                for i in term_1:
+                    if i in term_2:
+                        term_1.remove(i)# the result is the difference between the first and second term
+                return term_1
+
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ 
     #check if the query input contains either ? or * wildcards, if so initialize an empty query variable and iterate over the input query to look for wildcards and replace them with equivalent regex value
     if re.search(r'\*|\?', query):
@@ -408,7 +391,7 @@ def do_search(data, query, field):
         for row in data:
             if re.fullmatch(query, row[field].lower()):
                 result.append(row)                
-    return (f'These are the matching citations for query \'{query}\' in field \'{field}\': \n {pprint.pformat(result)}')
+    return result
 
 print(do_search(data, 'vaccin*s', 'citing'))
 
