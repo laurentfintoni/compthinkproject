@@ -345,21 +345,20 @@ def do_search(data, query, field):
             if term_1 == []:
              return []
             else:
-                term_2 = do_search(term_1, str(query_words_list[1]),field)# here i search for the second term not in data but in the result of the first term
+                term_2 = do_search(term_1, str(query_words_list[2]),field)# here i search for the second term not in data but in the result of the first term
                 term_1.extend(term_2)
                 return term_1
 
         if "or" in query_words_list:
             term_1 = do_search(data, str(query_words_list[0]), field)
-            term_2 = do_search(data, str(query_words_list[1]), field)
+            term_2 = do_search(data, str(query_words_list[2]), field)
             term_1.extend(term_2)
             return term_1
 
-        elif "not" in query_words_list:
-            query_words_list.remove("not")  # same procedure(ex : animal not cat )
-            term_1 = do_search(data, str(query_words_list[1]), field)  # ANIMAL
-            term_2 = do_search(data, str(query_words_list[0]), field)  # CAT
-            if term_2 == []:
+        elif "not" in query_words_list:  # same procedure(ex : animal not cat )
+            term_1 = do_search(data, str(query_words_list[0]), field)  # ANIMAL
+            term_2 = do_search(data, str(query_words_list[2]), field)  # CAT
+            if term_1 == []:
                 return []
             else:
                 for i in term_1:
