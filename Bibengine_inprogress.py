@@ -117,7 +117,7 @@ def do_compute_impact_factor(data, dois, year):
 #A variable with a set of test DOIS for impact factor 
 test_DOIS = {'10.3390/vaccines7040201', '10.3389/fimmu.2018.02532', '10.1007/s00134-019-05862-0', '10.1016/b978-0-323-35761-6.00063-8', '10.1007/s40506-020-00219-4'}
 
-#print(do_compute_impact_factor(data, test_DOIS, '2018'))
+#print(do_compute_impact_factor(data, test_DOIS, '1998'))
 
 #FUNCTION 3 (ENRICA)
 
@@ -290,7 +290,7 @@ def do_search_by_prefix(data, prefix, is_citing):
     else: 
         return (f'These are the DOIS in column \'{col}\' that match your prefix search: \n {pprint.pformat(result)}')
 
-#print(do_search_by_prefix(data, '10.3821', False))
+#print(do_search_by_prefix(data, '10.3821', True))
 
 #FUNCTION 8 (EVERYONE)
 
@@ -316,84 +316,90 @@ def do_search(data, query, field):
     if type(query) is not str or query == '': 
         return 'The input query must be a string with at least one character \U0001F913.'
     #return error if input field is not a string + catch eroneous field inputs w/ regex 
-    if type(field) is not str: 
+    if type(field) is not str or field == '': 
         return 'The chosen field for queries must be a string \U0001F913.'
     else:
         field_pattern = r'(citing|cited|creation|timespan)'
         field_match = re.fullmatch(field_pattern, field)
         if field_match == None: 
-            return 'The chosen field must be either citing, cited, creation or timespan \U0001F913.'    
+            return 'The field input must be either citing, cited, creation or timespan \U0001F913.' 
+#------------------------------------------------------
     #lower case input for insensitive match
-    query = query.lower()
-# -------------------------------------------------------------------------------------------------------------------
-    # check if there is a boolean operator in query and split the query into a list of terms
-    if re.search('not|or|and', query):
-        query_words_list = query.split(" ")
-
+    query = query.lower()  
+#------------------------------------------------------
+    #check for boolean in query 
+    if not re.search(r'(\snot\s|\sand\s|\sor\s)', query):
+        #check if the query input contains either ? or * wildcards, if so initialize an empty query variable and iterate over the input query to look for wildcards and replace them with equivalent regex value
+        if re.search(r'\*|\?', query):
+            re_query = ''
+            for l in query:
+                if l == '*':
+                    re_query += '.*'
+                elif l == '?':
+                    re_query += '.'
+                elif l in '.^${}+-()[]\|': #not sure we need this tbh 
+                    re_query += '\\'+l
+                else:
+                    re_query += l 
+            #initialize an empty result list
+            result = []
+            #iterate over data using input field as col, append results
+            for row in data:
+                if re.search(re_query, row[field].lower()):
+                    result.append(row)  
+        #if no wildcard just process          
+        else:
+            result = []
+            for row in data:
+                if re.search(query, row[field].lower()):
+                    result.append(row)  
+        if len(result) == 0:
+            return 'oopsie'
+        else:              
+            return result
+#------------------------------------------------------
+    else: 
+        # check if there is a boolean operator in query and split the query into a list of terms
+        if re.search(r'\snot\s|\sor\s|\sand\s', query):
+            query_words_list = query.split(" ")
         # check if the query contains more or less than tree terms
         if len(query_words_list) != 3:
-            return 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, there seems to be too many or too little words'
+            return 'Your query must follow the following format: "<tokens 1> <operator> <tokens 2>." There appears to be too many or too few words \U0001F645.'
         # check if the second term of the query is a bolean
-        if not re.match('not|or|and', str(query_words_list[1])):
-            return 'boolean query must have "<tokens 1> <operator> <tokens 2>" format, the booleans operator seems to be in the wrong place'
-        # check if there is more than a bolean
-        if len(re.findall('not|or|and', query)) > 1:
-            return 'this functions accept the use of only one boolean operator, query must have "<tokens 1> <operator> <tokens 2>" format'
-
+        if not re.match(r'not|or|and', query_words_list[1]):
+            return 'Your query must follow the following format: "<tokens 1> <operator> <tokens 2>." The boolean operator seems to be in the wrong place \U0001F631.'
+        # check if there is more than one bolean
+        if len(re.findall(r'\snot\s|\sor\s|\sand\s', query)) > 1:
+            return 'This function accepts the use of only one boolean operator \U0001F645. Your query must follow the following format: "<tokens 1> <operator> <tokens 2>."'
+        # repeat the whole function substituting the single terms of the query to the original query
         if "and" in query_words_list:
-            term_1 = do_search(data, str(query_words_list[0]),field)# repeat the whole function substituting the single terms of the query to the original query
-            if term_1 == []:
-             return []
+            term_1 = do_search(data, query_words_list[0],field)
+            if len(term_1) == 0:
+                return 'oopsie'
             else:
-                term_2 = do_search(data, str(query_words_list[1]),field)
-                term_1.extend(term_2)
-                return term_1
+                term_2 = do_search(term_1, query_words_list[2],field)
+                return term_2
 
-        if "or" in query_words_list:
+        elif "or" in query_words_list:
             term_1 = do_search(data, str(query_words_list[0]), field)
-            term_2 = do_search(data, str(query_words_list[1]), field)
-            term_1.extend(term_2)
-            return term_1
-
-        elif "not" in query_words_list:
-            query_words_list.remove("not")  # same procedure(ex : animal not cat )
-            term_1 = do_search(data, str(query_words_list[1]), field)  # ANIMAL
-            term_2 = do_search(data, str(query_words_list[0]), field)  # CAT
-            if term_2 == []:
-                return []
+            term_2 = do_search(data, str(query_words_list[2]), field)
+            if len(term_1 + term_2) == 0:
+                return 'oopsie'
             else:
-                for i in term_1:
-                    if i in term_2:
-                        term_1.remove(i)# the result is the difference between the first and second term
+                return term_1 + term_2
+
+        elif "not" in query_words_list:  
+            term_1 = do_search(data, str(query_words_list[0]), field)   
+            term_2 = do_search(data, str(query_words_list[2]), field)   
+            for i in term_2:
+                if i in term_1:
+                    term_1.remove(i)# the result is the difference between the first and second term
+            if len(term_1) == 0:
+                return 'oopsie'
+            else:
                 return term_1
 
-#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ 
-    #check if the query input contains either ? or * wildcards, if so initialize an empty query variable and iterate over the input query to look for wildcards and replace them with equivalent regex value
-    if re.search(r'\*|\?', query):
-        re_query = ''
-        for l in query:
-            if l == '*':
-                re_query += '.*'
-            elif l == '?':
-                re_query += '.'
-            elif l in '.^${}+-()[]\|': #not sure we need this tbh 
-                re_query += '\\'+l
-            else:
-                re_query += l 
-        #initialize an empty result list
-        result = []
-        #iterate over data using input field as col, append results
-        for row in data:
-            if re.search(re_query, row[field].lower()):
-                result.append(row)                
-    else:
-        result = []
-        for row in data:
-            if re.fullmatch(query, row[field].lower()):
-                result.append(row)                
-    return result
-
-print(do_search(data, 'vaccin*s', 'citing'))
+#print(do_search(data, '10', 'citing'))
 
 #FUNCTION 9 DO_FILTER_BY_VALUE (EVERYONE>ENRICA)
 
@@ -410,22 +416,6 @@ print(do_search(data, 'vaccin*s', 'citing'))
 #All matches are case insensitive – e.g. specifying World as query will match also strings
 #that contain world
 
-#def do_filter_by_value(data, query, field) 
-#This is a working version on data dictionary; used for coupling and co-citation
-
-""" def do_filter_by_value(data, query, field):
-    subcollection = []
-    for row in data:
-        #verify if it is necessary to convert every field value in string and if we can have to add a pre-lowercase 
-        if row[field] == query:
-	        subcollection.append(row)
-    return subcollection
- """
-#This is new version on data dictionary with comparisons and boolens, really naif in some parts but working! Give it a glance; at the end when all will be working we can compress some parts of the other functions using this:
-
-
-
-#b_ops = {'and' : operator.and_, 'or' : operator.or_, 'not' : operator.not_} unfortunately not usable because they does not work as comparisons operators, we cannot use them as functions with arguments
 def do_filter_by_value(data, query, field):
     #I did not put any control at the beginnig on string format or values to add but we can add them, similarly to do_search
     c_ops = {'<': operator.lt, '<=': operator.le, '>': operator.gt, '>=': operator.ge, '==': operator.eq, '!=': operator.ne}
@@ -474,7 +464,7 @@ query2 = '2019 OR 2017'
 query3 = '> 2012'
 field1 = 'cited_year'''
 
-#print(do_filter_by_value(data, 'vaccine OR e', 'cited'))
+print(do_filter_by_value(data, '10', 'citing'))
 
 
 
