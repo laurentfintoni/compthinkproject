@@ -347,16 +347,15 @@ def do_search(data, query, field):
             for row in data:
                 if re.search(re_query, row[field].lower()):
                     result.append(row)  
+            if len(result) == 0:
+                return 'oopsie'
         #if no wildcard just process          
         else:
             result = []
             for row in data:
-                if re.search(query, row[field].lower()):
+                if re.fullmatch(query, row[field].lower()):
                     result.append(row)  
-        if len(result) == 0:
-            return 'oopsie'
-        else:              
-            return result
+        return result
 #------------------------------------------------------
     else: 
         # check if there is a boolean operator in query and split the query into a list of terms
@@ -399,7 +398,7 @@ def do_search(data, query, field):
             else:
                 return term_1
 
-print(do_search(data, 'vacc* or 1007', 'citing'))
+print(do_search(data, 'annur*v not virology', 'citing'))
 
 #FUNCTION 9 DO_FILTER_BY_VALUE (EVERYONE>ENRICA)
 
@@ -424,9 +423,9 @@ def do_filter_by_value(data, query, field):
     for row in data:
         value = row[field]
         n_value = value.lower()
-        if not re.search('<|>|<=|>=|==|!=| and | or | not ', n_query):
+        if not re.search(r'<\s|>\s|<=\s|>=\s|==\s|!=\s|\sand\s|\sor\s|\snot\s', n_query):
             # I assume these carachters are never used for the actual string to query
-            if n_value == n_query:
+            if re.search(n_query, n_value):
                 subcollection.append(row)
         else:
             spl_query = re.split(' ', n_query)
@@ -448,13 +447,13 @@ def do_filter_by_value(data, query, field):
                 v2_query = spl_query[2]
                 #I cannot find a solution as for the comparison operators
                 if spl_query[1] == 'and':
-                    if n_value == v1_query and n_value == v2_query:
+                    if re.search(v1_query, n_value) and re.search(v2_query, n_value):
                         subcollection.append(row)
                 if spl_query[1] == 'or':
-                    if n_value == v1_query or n_value == v2_query:
+                    if re.search(v1_query, n_value) or re.search(v2_query, n_value):
                         subcollection.append(row)
                 if spl_query[1] == 'not':
-                    if n_value == v1_query and not n_value == v2_query:
+                    if re.search(v1_query, n_value) and not re.search(v2_query, n_value):
                         subcollection.append(row)
     return subcollection
 
@@ -464,7 +463,7 @@ query2 = '2019 OR 2017'
 query3 = '> 2012'
 field1 = 'cited_year'''
 
-#print(do_filter_by_value(data, '10', 'citing'))
+print(do_filter_by_value(data, 'annurev not virology', 'citing'))
 
 
 
