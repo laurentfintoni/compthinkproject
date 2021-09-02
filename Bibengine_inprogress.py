@@ -399,7 +399,7 @@ def do_search(data, query, field):
             else:
                 return term_1
 
-#print(do_search(data, '10', 'citing'))
+print(do_search(data, 'vacc* or 1007', 'citing'))
 
 #FUNCTION 9 DO_FILTER_BY_VALUE (EVERYONE>ENRICA)
 
@@ -464,7 +464,7 @@ query2 = '2019 OR 2017'
 query3 = '> 2012'
 field1 = 'cited_year'''
 
-print(do_filter_by_value(data, '10', 'citing'))
+#print(do_filter_by_value(data, '10', 'citing'))
 
 
 
