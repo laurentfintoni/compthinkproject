@@ -1,3 +1,5 @@
+#Still not working but at a medium level :D
+
 # IMPORT SECTION
 import csv  # to read the data
 import re  # to use regex
