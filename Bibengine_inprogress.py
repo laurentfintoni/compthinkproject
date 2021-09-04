@@ -423,7 +423,7 @@ def do_filter_by_value(data, query, field):
     for row in data:
         value = row[field]
         n_value = value.lower()
-        if not re.search(r'<\s|>\s|<=\s|>=\s|==\s|!=\s|\sand\s|\sor\s|\snot\s', n_query):
+        if not re.search(r'<\s|>\s|<=\s|>=\s|==\s|!=\s|and|or|not', n_query):
             # I assume these carachters are never used for the actual string to query
             if re.search(n_query, n_value):
                 subcollection.append(row)
@@ -434,7 +434,17 @@ def do_filter_by_value(data, query, field):
             #Not used string.partition(value) because is not working with regex, so, impossible to say string.partition('and|or|not') or re.partition('and|or|not', string)
             #Possible problem: if a space is part of the actual string to query
             #es. '2029 OR 2028' = ['2019', 'or', '2018']
+	    if 2 < len(spl_query) > 3:
             if len(spl_query) == 2:
+                if re.search(r'not\s|or\s|and\s', n_query):
+                    return 'Your query must follow the following format: "<operator> <tokens>." for comparisons, "<tokens 1> <operator> <tokens 2>" for boolean search \U0001F631.'
+                        # check if there are the right operators
+                if not re.match('<|>|<=|>=|==|!=', spl_query[0]):
+                    return 'Your query must follow the following format: "<operator> <tokens>." for comparisons. The operator seems to be in the wrong place \U0001F631.'
+                        # check if operator\token order is not inverted
+                if len(re.findall(r'<\s|>\s|<=\s|>=\s|==\s|!=', n_query)) > 1:
+                        return 'This function accepts the use of only one  operator. Your query must follow the following format: "<operator> <tokens> \U0001F645."'
+                        # check if there is only one operator
                 #when comparison is used: "<operator> <tokens>" es. '< 2019'
                 co_ops = c_ops[spl_query[0]]
                 #take the string of the operator, compare it with the key in the c_ops dictionary to have back an operator and be able to perform a check Operator(value1, value2)
@@ -442,6 +452,15 @@ def do_filter_by_value(data, query, field):
                 if co_ops(n_value, v_query):
                     subcollection.append(row)
             if len(spl_query) == 3:
+		if re.search(r'<|>|<=|>=|==|!=', n_query):
+                    return 'Your query must follow the following format: "<operator> <tokens>." for comparisons, "<tokens 1> <operator> <tokens 2>" for boolean search \U0001F645.'
+                    # check if there are the right operators
+                if not re.match(r'and|or|not', spl_query[1]):
+                    return 'Your query must follow the following format: "<tokens 1> <operator> <tokens 2>." The boolean operator seems to be in the wrong place \U0001F631.'
+                    # check if the second term of the query is a bolean
+                if len(re.findall(r'not|or|and', n_query)) > 1:
+                    return 'This function accepts the use of only one boolean operator. Your query must follow the following format: "<tokens 1> <operator> <tokens 2>\U0001F645.'
+                    # check if there is more than one bolean
                 #when boolean is used: "<tokens 1> <operator> <tokens 2>" es. '2019 or 2018'
                 v1_query = spl_query[0]
                 v2_query = spl_query[2]
