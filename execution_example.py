@@ -17,7 +17,7 @@
 from bibengine import BibliometricEngine
 
 # create a new object of the class 'BibliometricEngine' specifying the input CSV files to process
-my_be = BibliometricEngine("/Users/laurentfintoni/Desktop/University/COURSE DOCS/YEAR 1/Q1/COMPUTATIONAL THINKING/Project GH/compthinkproject/citations_sample.csv")
+my_be = BibliometricEngine("citations_sample.csv")
 
 # my_be.<method> ...
 test_dois = {'10.3390/vaccines7040201', '10.3389/fimmu.2018.02532', '10.1007/s00134-019-05862-0', '10.1016/b978-0-323-35761-6.00063-8', '10.1007/s40506-020-00219-4'}
