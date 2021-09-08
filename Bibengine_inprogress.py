@@ -2,16 +2,17 @@
 import csv #to read the data
 import re #to use regex
 import pprint #to make things pretty because life is beautiful 
-import networkx as nx 
-import matplotlib.pyplot as plt
-import operator 
+import networkx as nx #to make graphs 
+import operator #to make comparisons easier 
 from datetime import datetime #to compute cited years
 from dateutil.relativedelta import relativedelta
+from networkx.classes.digraph import DiGraph
+from networkx.classes.graph import Graph
+from networkx.classes.multidigraph import MultiDiGraph
+from networkx.classes.multigraph import MultiGraph
+from networkx.classes.ordered import OrderedDiGraph, OrderedGraph, OrderedMultiDiGraph, OrderedMultiGraph
 
-#SET THE FILE FOR YOUR SAMPLE DATA 
-citations_file_path = '/Users/laurentfintoni/Desktop/University/COURSE DOCS/YEAR 1/Q1/COMPUTATIONAL THINKING/Project/citations_sample.csv'
-
-#FUNCTION 1
+#FUNCTION 1 (LAURENT AND ENRICA)
 
 def process_citations(citations_file_path):
     #initialize an empty list to contain data
@@ -27,7 +28,7 @@ def process_citations(citations_file_path):
         citing_year = row['creation']
         row['citing_year'] = citing_year[0:4]
         timespan_str = row['timespan']
-    #create a cited year key/value pair by using datetime computations 
+    #create a cited year key/value pair from timespan column by using datetime library 
         while len(citing_year) < 10:
             citing_year = citing_year + '-01'
         citing_n_date = datetime.strptime(citing_year, '%Y-%m-%d')
@@ -52,28 +53,17 @@ def process_citations(citations_file_path):
         row['cited_year'] = cited_year
     return matrix
 
-#SET A DATA VARIABLE THAT PROCESSES THE SAMPLE 
-data = process_citations(citations_file_path)
-
-#FUNCTION 2 
-
-#data: the data returned by process_citations
-#dois: a set of DOIs identifying articles
-#year: a string in format YYYY to consider
-#It returns a number which is the result of the computation of the Impact Factor (IF) for such documents.
-#The IF of a set of documents dois on a year year is computed by counting the number of citations all
-#the documents in dois have received in year year, and then dividing such a value by the number of
-#documents in dois published in the previous two years (i.e. in year-1 and year-2)"""
+#FUNCTION 2 (LAURENT)
 
 def do_compute_impact_factor(data, dois, year):
-    #return error if year isn't a string + catch eroneous year string w/ regex
+    #return error if year isn't a string + catch eroneous year strings w/ regex
     if type(year) is not str or year == '': 
         return 'The year input must be a string with four characters \U0001F645.' 
     else:
         str_pattern = r'(\d{4}$)'
         match = re.fullmatch(str_pattern, year)
         if match == None: 
-            return 'The year must be a string with a YYYY format \U0001F913.'
+            return 'The year must be a string in the YYYY format \U0001F913.'
     #return error if set is empty 
     if len(dois) == 0: 
         return 'There are no input DOIS \U0001F645.'
@@ -82,7 +72,7 @@ def do_compute_impact_factor(data, dois, year):
     #look at all dict instances in list and DOIS in input
     for row in data: 
         for i in dois: 
-            #if a DOI in input and the year match in the respective columns add a count
+            #if a DOI in input and the year match in the respective column add a count
             if i in row["cited"] and year in row["creation"]: 
                 citations_count +=1
     #return error if count is empty 
@@ -94,7 +84,7 @@ def do_compute_impact_factor(data, dois, year):
     year_int = int(year) 
     year_1 = str(year_int - 1) 
     year_2 = str(year_int - 2)
-    #same as above but this time we look for matches between DOIs in citing and cited and the years in their respective creation columns          
+    #same as above but this time we look for matches between DOIs in citing and cited years        
     for row in data: 
         for i in dois:       
             if i in row["citing"] and year_1 in row["citing_year"]:
@@ -114,17 +104,7 @@ def do_compute_impact_factor(data, dois, year):
         #use formatted string literal to make the result pretty  
         return (f'There were {citations_count} citations for all dois in {year}, {docs_published} documents published in the previous two years, and the impact factor is {impact_factor}.') 
 
-#A variable with a set of test DOIS for impact factor 
-test_DOIS = {'10.3390/vaccines7040201', '10.3389/fimmu.2018.02532', '10.1007/s00134-019-05862-0', '10.1016/b978-0-323-35761-6.00063-8', '10.1007/s40506-020-00219-4'}
-
-#print(do_compute_impact_factor(data, test_DOIS, '1998'))
-
 #FUNCTION 3 (ENRICA)
-
-#data:the data returned by process_citations
-#doi1: the DOI string of the first article
-#doi2: the DOI string of the second article
-#It returns an integer defining how many times the two input documents are cited together by other documents.
 
 def do_get_co_citations(data, doi1, doi2):
     #return error if doi inputs are not strings or are empty 
@@ -147,24 +127,19 @@ def do_get_co_citations(data, doi1, doi2):
         for doiB in doi2sublist:
             if doiA['citing'] == doiB['citing']:
                 co_citations += 1
-    return (f'The total number of co-citations for the two input documents is: {co_citations}.')
-
-#print(do_get_co_citations(data, '10.1016/s0140-6736(97)11096-0', '10.1080/15265161.2010.519226'))
+    #return error if count is empty
+    if co_citations == 0:
+        return 'The two input documents are never cited together by other documents \U0001F622'
+    else:
+        return (f'The total number of co-citations for the two input documents is: {co_citations}.')
 
 #FUNCTION 4 (ENRICA)
 
-#data: the data returned by process_citations
-#doi1: the DOI string of the first article
-#doi2: the DOI string of the first article
-#It returns an integer defining how many times the two input documents cite both the same document.
-
-#maybe it could be more economic for the code (?) writing just one different function to be recalled with the different value of cited VS citing
-
 def do_get_bibliographic_coupling(data, doi1, doi2):
     #return error if doi inputs are not strings or are empty 
-    if type(doi1) is not str or doi1 == '': #return error if doi isn't a string 
+    if type(doi1) is not str or doi1 == '': 
         return 'The first doi input must be a string with at least one character \U0001F645.'
-    if type(doi2) is not str or doi2 == '': #return error if doi isn't a string 
+    if type(doi2) is not str or doi2 == '': 
         return 'The second doi input must be a string with at least one character \U0001F645.'
     #initialize two empty lists, look for citations and store them in list    
     doi1sublist = []
@@ -181,25 +156,19 @@ def do_get_bibliographic_coupling(data, doi1, doi2):
         for doiB in doi2sublist:
             if doiA['cited'] == doiB['cited']:
                 bibliographic_coupling += 1
-    return (f'The total number of shared citations by the input documents is: {bibliographic_coupling}.')
-
-#print(do_get_bibliographic_coupling(data, '10.1007/978-1-4614-7438-8_5', '10.2217/cer-2016-0035'))
+    #return error if count is empty
+    if bibliographic_coupling == 0:
+        return 'The two input documents never cite the same document \U0001F622'
+    else:
+        return (f'The total number of shared citations by the input documents is: {bibliographic_coupling}.')
 
 #FUNCTION 5 (CAMILLA)
-
-#data: the data returned by process_citations
-#start: a string defining the starting year to consider (format: YYYY)
-#end: a string defining the ending year to consider (format: YYYY) - it must be equal to or
-#greater than start
-#It returns a directed graph containing all the articles involved in citations if both of them
-#have been published within the input start-end interval (start and end included).
-#Use the DOIs of the articles involved in citations as name of the nodes.
 
 def do_get_citation_network(data, start, end):
     #catch if end is before start 
     if end < start:
         return 'The end year must be after the start year \U0001F645.'
-    #return error if start/end inputs aren't a string + catch eroneous strings w/ regex
+    #return error if start/end inputs aren't strings + catch eroneous strings w/ regex
     if type(start) is not str or start == '': 
         return 'The start year input must be a string with four characters \U0001F645.'
     else: 
@@ -215,64 +184,43 @@ def do_get_citation_network(data, start, end):
         if match == None: 
             return 'The end year must be a string with a YYYY format \U0001F913.'
     #intiliaze graph 
-    G = nx.MultiDiGraph()
+    graph = nx.MultiDiGraph()
     #populate graph w/ relevant inputs 
     for row in data:
         if start <= row["citing_year"] <= end and start <= row["cited_year"] <= end:
-            G.add_edge(row['citing'], row['cited'])
-	
-#-------------------------------displays the graph not actually part of the exam---------------------------------------------------------------
-    pos = nx.spring_layout(G)
-    nx.draw_networkx_nodes(G,pos,cmap=plt.get_cmap('Blues'),node_size=300)
-    nx.draw_networkx_edges(G, pos, edgelist=G.edges(), edge_color="green")
-    nx.draw_networkx_labels(G, pos, font_size=9)
-    plt.show()
-#--------------------------------------------------------------------------------------------------------------------------------------------------
-    return G
-
-#print(do_get_citation_network(data, '2015', '2019'))
+            graph.add_edge(row['citing'], row['cited'])
+    return graph
 
 #FUNCTION 6 (CAMILLA)
 
-#data: the data returned by process_citations
-#g1: the first graph to consider
-#g2: the second graph to consider
-#It returns a new graph being the merge of the two input graphs if these are of the same type
-#(e.g. both DiGraphs). In case the types of the graphs are different, return None.
-
 def do_merge_graphs(data, g1, g2):
+    #check if inputs are networkx graphs
+    graph_types = [type(Graph()), type(DiGraph()), type(MultiGraph()), type(MultiDiGraph()), type(OrderedGraph()), type(OrderedDiGraph()), type(OrderedMultiGraph()), type(OrderedMultiDiGraph())]
+    if type(g1) not in graph_types:
+        return 'The input graphs must be generated with the networkx library \U0001F645.'
+    if type(g2) not in graph_types:
+        return 'The input graphs must be generated with the networkx library \U0001F645.'
+    #check if input graphs are of same type, if so compute new graph, else return none
     if type(g1) is type(g2):
         new_graph = nx.compose(g1, g2)
         return new_graph
     else:
         return None
 
-#test_graph_1 = do_get_citation_network(data, '2018', '2019')
-#test_graph_2 = do_get_citation_network(data, '2015', '2019')
-#print(do_merge_graphs(data, test_graph_1, test_graph_2))
-
 #FUNCTION 7 (LAURENT)
-
-#data: the data returned by process_citations or by other search/filter activities
-#prefix: a string defining the precise prefix (i.e. the part before the first slash) of a DOI
-#is_citing: a boolean telling if the operation should be run on citing articles or not
-#It returns a sub-collection of citations in data where either the citing DOI (if is_citing is True)
-#or the cited DOI (if is_citing is False) is characterised by the input prefix.
-
-#This is a working version w/ dictionary
 
 def do_search_by_prefix(data, prefix, is_citing):
     #return error if prefix input is not a string + catch eroneous prefix strings w/ regex
     if type(prefix) is not str or prefix == '': 
         return 'The prefix must be a string with at least one character \U0001F913.'
     else:
-        str_pattern = r'(\d{2}\.\d{0,5})'
-        match = re.fullmatch(str_pattern, prefix)
-        if match == None: 
-            return 'The prefix must be a string with a pattern of 2 digits followed by a full stop and another set of digits up to 5 \U0001F913.'
+        str_pattern = r'(\d*/\w*)'
+        match = re.search(str_pattern, prefix)
+        if match: 
+            return 'There is a forward slash in your prefix input. The prefix must be a string with a pattern of digits and numbers only \U0001F913.'
     #return error if is_citing input is not boolean
     if type(is_citing) is not bool:  
-        return 'We need a boolean option for the third input \U0001F913.'    
+        return 'The third input must be a boolean value of TRUE or FALSE \U0001F913.'    
     #create an empty list for the results 
     result = [] 
     #select the column to do search on based on boolean input 
@@ -288,28 +236,9 @@ def do_search_by_prefix(data, prefix, is_citing):
     if len(result) == 0: 
         return 'There are no results for your search, please try again \U0001F647.'
     else: 
-        return (f'These are the DOIS in column \'{col}\' that match your prefix search: \n {pprint.pformat(result)}')
-
-#print(do_search_by_prefix(data, '10.3821', True))
+        return (f'These are the results that match your search for \'{prefix}\' in column \'{col}\': \n {pprint.pformat(result)}')
 
 #FUNCTION 8 (EVERYONE)
-
-#data: the data returned by process_citations or by other search/filter activities
-#query: a string defining the query to do on the data
-#field: a string defining the column (it can be either citing, cited, creation, timespan)
-#on which running the query
-#It returns a sub-collection of citations in data where the query matched on the input field.
-#It is possible to use wildcards in the query. If no wildcards are used, there should be a
-#complete match with the string in query to return that citation in the results.
-#Multiple wildcards * can be used in query. E.g. World*Web looks for all the strings that
-#matches with the word World followed by zero or more characters, followed by the word Web
-#(examples: World Wide Web, World Spider Web, etc.).
-#Boolean operators can be used: and, or, not
-#<tokens 1> <operator> <tokens 2>
-#All matches are case insensitive – e.g. specifying World as query will match also strings
-#that contain world
-
-#something about matching different date formats? right now it only match yyyy-mm-dd + still needs wildcard matching and booleans 
 
 def do_search(data, query, field):
     #return error if input query is not a string 
@@ -323,10 +252,8 @@ def do_search(data, query, field):
         field_match = re.fullmatch(field_pattern, field)
         if field_match == None: 
             return 'The field input must be either citing, cited, creation or timespan \U0001F913.' 
-#------------------------------------------------------
     #lower case input for insensitive match
     query = query.lower()  
-#------------------------------------------------------
     #check for boolean in query 
     if not re.search(r'(\snot\s|\sand\s|\sor\s)', query):
         #check if the query input contains either ? or * wildcards, if so initialize an empty query variable and iterate over the input query to look for wildcards and replace them with equivalent regex value
@@ -337,7 +264,7 @@ def do_search(data, query, field):
                     re_query += '.*'
                 elif l == '?':
                     re_query += '.'
-                elif l in '.^${}+-()[]\|': #not sure we need this tbh 
+                elif l in '.^$+-()[]\|':
                     re_query += '\\'+l
                 else:
                     re_query += l 
@@ -348,7 +275,7 @@ def do_search(data, query, field):
                 if re.search(re_query, row[field].lower()):
                     result.append(row)  
             if len(result) == 0:
-                return 'oopsie'
+                return 'There are no results for your search, please try again \U0001F647'
         #if no wildcard just process          
         else:
             result = []
@@ -356,133 +283,155 @@ def do_search(data, query, field):
                 if re.fullmatch(query, row[field].lower()):
                     result.append(row)  
         return result
-#------------------------------------------------------
+    #if there is a boolean operator in query 
     else: 
-        # check if there is a boolean operator in query and split the query into a list of terms
+        #split the query into tokens
         if re.search(r'\snot\s|\sor\s|\sand\s', query):
             query_words_list = query.split(" ")
-        # check if the query contains more or less than tree terms
+        #check if the query contains more or less than three tokens
         if len(query_words_list) != 3:
-            return 'Your query must follow the following format: "<tokens 1> <operator> <tokens 2>." There appears to be too many or too few words \U0001F645.'
-        # check if the second term of the query is a bolean
+            return 'Your query must follow the following format: "<tokens 1> <operator> <tokens 2>." There appears to be too many or too few tokens \U0001F645.'
+        #check if the second token of the query is a boolean operator
         if not re.match(r'not|or|and', query_words_list[1]):
             return 'Your query must follow the following format: "<tokens 1> <operator> <tokens 2>." The boolean operator seems to be in the wrong place \U0001F631.'
-        # check if there is more than one bolean
+        #check if there is more than one boolean operator in the tokens
         if len(re.findall(r'\snot\s|\sor\s|\sand\s', query)) > 1:
-            return 'This function accepts the use of only one boolean operator \U0001F645. Your query must follow the following format: "<tokens 1> <operator> <tokens 2>."'
-        # repeat the whole function substituting the single terms of the query to the original query
+            return 'This function only accepts the use of one boolean operator \U0001F645. Your query must follow the following format: "<tokens 1> <operator> <tokens 2>."'
+        #if operator is and run the function with the first token and store it as a variable, else return an error message or continue with the second token and run the function using term1 as input instead of data, then return term2 variable 
         if "and" in query_words_list:
             term_1 = do_search(data, query_words_list[0],field)
             if len(term_1) == 0:
-                return 'oopsie'
+                return 'There are no results for your search, please try again \U0001F647'
             else:
                 term_2 = do_search(term_1, query_words_list[2],field)
                 return term_2
-
+        #if operator is or run the function with first and second tokens, return error message if results are empty else concatenate 
         elif "or" in query_words_list:
             term_1 = do_search(data, str(query_words_list[0]), field)
             term_2 = do_search(data, str(query_words_list[2]), field)
             if len(term_1 + term_2) == 0:
-                return 'oopsie'
+                return 'There are no results for your search, please try again \U0001F647'
             else:
                 return term_1 + term_2
-
+        #if operator is not run the function with first and second tokens, then look for any instances of term2 results in term1 results and remove them
         elif "not" in query_words_list:  
             term_1 = do_search(data, str(query_words_list[0]), field)   
             term_2 = do_search(data, str(query_words_list[2]), field)   
             for i in term_2:
                 if i in term_1:
-                    term_1.remove(i)# the result is the difference between the first and second term
+                    term_1.remove(i)
             if len(term_1) == 0:
-                return 'oopsie'
+                return 'There are no results for your search, please try again \U0001F647'
             else:
                 return term_1
 
-print(do_search(data, 'annur*v not virology', 'citing'))
-
-#FUNCTION 9 DO_FILTER_BY_VALUE (EVERYONE>ENRICA)
-
-#data: the data returned by process_citations or by other search/filter activities
-#query: a string defining the query to do on the data
-#field: a string defining column (it can be either citing, cited, creation, timespan) on
-#which running the query
-#It returns a sub-collection of citations in data where the query matched on the input field.
-#No wildcarts are permitted in the query, only comparisons.
-#Comparison operator can be used in query: <, >, <=, >=, ==, !=
-#<operator> <tokens>
-#Boolean operators can be used: and, or, not
-#<tokens 1> <operator> <tokens 2>
-#All matches are case insensitive – e.g. specifying World as query will match also strings
-#that contain world
+#FUNCTION 9 DO_FILTER_BY_VALUE (EVERYONE)
 
 def do_filter_by_value(data, query, field):
-    #I did not put any control at the beginnig on string format or values to add but we can add them, similarly to do_search
+    #return error if input query is not a string 
+    if type(query) is not str or query == '': 
+        return 'The input query must be a string with at least one character \U0001F913.'
+    #return error if input field is not a string + catch eroneous field inputs w/ regex 
+    if type(field) is not str or field == '': 
+        return 'The chosen field for queries must be a string \U0001F913.'
+    else:
+        field_pattern = r'(citing|cited|creation|timespan)'
+        field_match = re.fullmatch(field_pattern, field)
+        if field_match == None: 
+            return 'The field input must be either citing, cited, creation or timespan \U0001F913.' 
+    #create a dictionary containing possible comparison operators using operator library 
     c_ops = {'<': operator.lt, '<=': operator.le, '>': operator.gt, '>=': operator.ge, '==': operator.eq, '!=': operator.ne}
+    #create a list for results
     subcollection = []
+    #lowercase the query
     n_query = query.lower()
-    for row in data:
-        value = row[field]
-        n_value = value.lower()
-        if not re.search(r'<\s|>\s|<=\s|>=\s|==\s|!=\s|and|or|not', n_query):
-            # I assume these carachters are never used for the actual string to query
+    #check for operators in query 
+    if not re.search(r'<\s|>\s|<=\s|>=\s|==\s|!=\s|and|or|not', n_query):
+        for row in data:
+            value = row[field]
+            #lowercase the search field 
+            n_value = value.lower()
+            #search for query in search field 
             if re.search(n_query, n_value):
                 subcollection.append(row)
+        if len(subcollection) == 0:
+                return 'There are no results for your search, please try again \U0001F647'
         else:
-            spl_query = re.split(' ', n_query)
-            #Assuming all the strings have to be written as Peroni said "<operator> <tokens>" if comparisons, "<tokens 1> <operator> <tokens 2>" if boolean
-            #Used space to split, and 2-lenght list for if comaprisons, and 3-lenght list if with boolean
-            #Not used string.partition(value) because is not working with regex, so, impossible to say string.partition('and|or|not') or re.partition('and|or|not', string)
-            #Possible problem: if a space is part of the actual string to query
-            #es. '2029 OR 2028' = ['2019', 'or', '2018']
-	    if 2 < len(spl_query) > 3:
-            if len(spl_query) == 2:
-                if re.search(r'not\s|or\s|and\s', n_query):
-                    return 'Your query must follow the following format: "<operator> <tokens>." for comparisons, "<tokens 1> <operator> <tokens 2>" for boolean search \U0001F631.'
-                        # check if there are the right operators
-                if not re.match('<|>|<=|>=|==|!=', spl_query[0]):
-                    return 'Your query must follow the following format: "<operator> <tokens>." for comparisons. The operator seems to be in the wrong place \U0001F631.'
-                        # check if operator\token order is not inverted
-                if len(re.findall(r'<\s|>\s|<=\s|>=\s|==\s|!=', n_query)) > 1:
-                        return 'This function accepts the use of only one  operator. Your query must follow the following format: "<operator> <tokens> \U0001F645."'
-                        # check if there is only one operator
-                #when comparison is used: "<operator> <tokens>" es. '< 2019'
+            return [subcollection]
+    #if there are operators in query
+    else:
+        # split the query into tokens
+        spl_query = n_query.split(" ")
+        #check if the query contains more than three tokens
+        if len(spl_query) > 3:
+            return 'Your query must follow the following format: "<operator> <tokens>" for comparisons or "<tokens 1> <operator> <tokens 2>" for boolean searches. There appears to be too many tokens \U0001F645.'        
+        #check if the query contains more than three tokens
+        if len(spl_query) == 1:
+            return 'Your query must follow the following format: "<operator> <tokens>" for comparisons or "<tokens 1> <operator> <tokens 2>" for boolean searches. There appears to be only one token \U0001F645.'  
+        #if query has two tokens 
+        if len(spl_query) == 2:
+            #check that first token is a valid operator 
+            if not re.fullmatch(r'<|>|<=|>=|==|!=', spl_query[0]):
+                return 'It looks like your first token is not a valid comparison operator \U0001F645.'
+            else:
+                #look for first token in dictionary of operators and set it as a variable
                 co_ops = c_ops[spl_query[0]]
-                #take the string of the operator, compare it with the key in the c_ops dictionary to have back an operator and be able to perform a check Operator(value1, value2)
+            if re.fullmatch(r'<|>|<=|>=|==|!=', spl_query[1]):
+                return 'It looks like your second token is a comparison operator \U0001F645. Your query must follow the following format: "<operator> <tokens>" for comparisons.'
+            else:
+                #set second token as the query
                 v_query = spl_query[1]
+            #search for query in data using operator library
+            for row in data:
+                value = row[field] 
+                n_value = value.lower()
                 if co_ops(n_value, v_query):
                     subcollection.append(row)
-            if len(spl_query) == 3:
-		if re.search(r'<|>|<=|>=|==|!=', n_query):
-                    return 'Your query must follow the following format: "<operator> <tokens>." for comparisons, "<tokens 1> <operator> <tokens 2>" for boolean search \U0001F645.'
-                    # check if there are the right operators
-                if not re.match(r'and|or|not', spl_query[1]):
-                    return 'Your query must follow the following format: "<tokens 1> <operator> <tokens 2>." The boolean operator seems to be in the wrong place \U0001F631.'
-                    # check if the second term of the query is a bolean
-                if len(re.findall(r'not|or|and', n_query)) > 1:
-                    return 'This function accepts the use of only one boolean operator. Your query must follow the following format: "<tokens 1> <operator> <tokens 2>\U0001F645.'
-                    # check if there is more than one bolean
-                #when boolean is used: "<tokens 1> <operator> <tokens 2>" es. '2019 or 2018'
-                v1_query = spl_query[0]
-                v2_query = spl_query[2]
-                #I cannot find a solution as for the comparison operators
-                if spl_query[1] == 'and':
+            if len(subcollection) == 0:
+                return 'There are no results for your search, please try again \U0001F647'
+            else:
+                return [subcollection]
+        #if query has three tokens    
+        if len(spl_query) == 3:
+            #check that second token is a boolean
+            if not re.match(r'and|or|not', spl_query[1]):
+                return 'Your query must follow the following format: "<tokens 1> <operator> <tokens 2>." The boolean operator seems to be in the wrong place \U0001F631.'
+            #check that there is only one boolean in tokens
+            if len(re.findall(r'not|or|and', n_query)) > 1:
+                return 'This function only accepts the use of one boolean operator \U0001F645. Your query must follow the following format: "<tokens 1> <operator> <tokens 2>."'
+            #set the first and third tokens as query variables
+            v1_query = spl_query[0]
+            v2_query = spl_query[2]
+            #if boolean is and look for both tokens in data 
+            if spl_query[1] == 'and':
+                for row in data:
+                    value = row[field] 
+                    n_value = value.lower()
                     if re.search(v1_query, n_value) and re.search(v2_query, n_value):
                         subcollection.append(row)
-                if spl_query[1] == 'or':
+                if len(subcollection) == 0:
+                    return 'There are no results for your search, please try again \U0001F647'
+                else:
+                    return [subcollection]
+            #if boolean is or look for either token in data
+            elif spl_query[1] == 'or':
+                for row in data:
+                    value = row[field] 
+                    n_value = value.lower()
                     if re.search(v1_query, n_value) or re.search(v2_query, n_value):
                         subcollection.append(row)
-                if spl_query[1] == 'not':
+                if len(subcollection) == 0:
+                    return 'There are no results for your search, please try again \U0001F647'
+                else:
+                    return [subcollection]
+            #if boolean is not look for only the first token in data
+            elif spl_query[1] == 'not':
+                for row in data:
+                    value = row[field] 
+                    n_value = value.lower()
                     if re.search(v1_query, n_value) and not re.search(v2_query, n_value):
                         subcollection.append(row)
-    return subcollection
-
-'''data1 = [{'citing': '10.3390/vaccines7040201', 'cited': '10.3390/vaccines3010137', 'creation': '2019-11-29', 'timespan': 'P4Y9M3D', 'citing_year': '2019', 'cited_year': '2015'}, {'citing': '10.3390/vaccines7040201', 'cited': '10.4161/hv.26036', 'creation': '2019-11-29', 'timespan': 'P5Y11M28D', 'citing_year': '2019', 'cited_year': '2013'}, {'citing': '10.3390/vaccines7040201', 'cited': '10.7861/clinmedicine.17-6-484', 'creation': '2019-11-29', 'timespan': 'P1Y11M', 'citing_year': '2019', 'cited_year': '2017'}, {'citing': '10.3390/vaccines8020154', 'cited': '10.3390/vaccines7040201', 'creation': '2020-03-30', 'timespan': 'P0Y4M1D', 'citing_year': '2020', 'cited_year': '2019'}, {'citing': '10.3390/vaccines8040600', 'cited': '10.3390/vaccines7040201', 'creation': '2020-10-12', 'timespan': 'P0Y10M13D', 'citing_year': '2020', 'cited_year': '2019'}]
-#query1 = 'p4Y9m3D'
-query2 = '2019 OR 2017'
-query3 = '> 2012'
-field1 = 'cited_year'''
-
-print(do_filter_by_value(data, 'annurev not virology', 'citing'))
-
-
-
+                if len(subcollection) == 0:
+                    return 'There are no results for your search, please try again \U0001F647'
+                else:
+                    return [subcollection]

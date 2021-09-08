@@ -18,11 +18,10 @@
 # the particular functions implemented by a group. The 'my_test_group' module specified
 # here is just a placeholder, since it defines only the signature of the various
 # functions but it returns always None.
-from my_test_group import *
-
+from Bibengine_inprogress import *
 
 class BibliometricEngine(object):
-    def __init__(self, metadata_file_path):
+    def __init__(self, citations_file_path):
         self.data = process_citations(citations_file_path)
 
     def compute_impact_factor(self, dois, year):

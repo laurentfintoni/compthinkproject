@@ -1,12 +1,58 @@
-#FUNCTION 2
+#IMPORT SECTION
+import csv #to read the data
+import re #to use regex
+import pprint #to make things pretty because life is beautiful 
+import networkx as nx #to make graphs 
+import operator #to make comparisons easier 
+from datetime import datetime #to compute cited years
+from dateutil.relativedelta import relativedelta
 
-#data: the data returned by process_citations
-#dois: a set of DOIs identifying articles
-#year: a string in format YYYY to consider
-#It returns a number which is the result of the computation of the Impact Factor (IF) for such documents.
-#The IF of a set of documents dois on a year year is computed by counting the number of citations all
-#the documents in dois have received in year year, and then dividing such a value by the number of
-#documents in dois published in the previous two years (i.e. in year-1 and year-2)"""
+#SET THE FILE FOR YOUR SAMPLE DATA 
+citations_file_path = '/Users/laurentfintoni/Desktop/University/COURSE DOCS/YEAR 1/Q1/COMPUTATIONAL THINKING/Project/citations_sample.csv'
+
+#FUNCTION 1
+
+def process_citations(citations_file_path):
+    #initialize an empty list to contain data
+    matrix = [] 
+    #populate list with raw data, each row is a dictionary with the column as key, row entry as value 
+    with open(citations_file_path, mode='r') as file: 
+        csvFile = csv.DictReader(file)
+        for row in csvFile:
+            matrix.append(row)
+    #iterate over the raw data to add two new key/value pairs, citing year and cited year both in YYYY formats to use for graph function and Impact Factor while retaining creation and timespan for search functions 
+    for row in matrix: 
+    #create a citing year key/value pair by just grabbing the first four characters of the creation field 
+        citing_year = row['creation']
+        row['citing_year'] = citing_year[0:4]
+        timespan_str = row['timespan']
+    #create a cited year key/value pair from timespan column by using datetime library 
+        while len(citing_year) < 10:
+            citing_year = citing_year + '-01'
+        citing_n_date = datetime.strptime(citing_year, '%Y-%m-%d')
+        timespan_n = (re.split('[a-zA-Z]', timespan_str, 4)[1:-1])
+        if len(timespan_n) == 1:
+            a_n = int(timespan_n[0])
+            delta_n = relativedelta(years=a_n)
+        elif len(timespan_n) == 2:
+            a_n = int(timespan_n[0])
+            m_n = int(timespan_n[1])
+            delta_n = relativedelta(years=a_n, months=m_n)
+        else:
+            a_n = int(timespan_n[0])
+            m_n = int(timespan_n[1])
+            g_n = int(timespan_n[2])
+            delta_n = relativedelta(years=a_n, months=m_n, days=g_n)
+        if timespan_str[0] == "-": #just in case there is a negative timespan 
+            cited_n_date = citing_n_date + delta_n
+        else:
+            cited_n_date = citing_n_date - delta_n
+        cited_year = (str(cited_n_date)[0:4])
+        row['cited_year'] = cited_year
+    return matrix
+
+#SET A DATA VARIABLE THAT PROCESSES THE SAMPLE 
+data = process_citations(citations_file_path)
 
 def do_compute_impact_factor(data, dois, year):
     #return error if year isn't a string + catch eroneous year string w/ regex
@@ -81,8 +127,9 @@ def do_compute_impact_factor(data, dois, year):
             IF = IF_num / IF_den
             return (f'For doi in "dois", the data report a) n. {citations_count} citation(s) received in {year} and b) n. {IF_den} doi(s) published in the previous two years. The impact factor is then a/b = {IF}.')
 
-test_DOISa = {'10.3390/vaccines7040201'}
+""" test_DOISa = {'10.3390/vaccines7040201'}
 test_DOIS = {'10.3390/vaccines7040201', '10.3389/fimmu.2018.02532', '10.1007/s00134-019-05862-0', '10.1016/b978-0-323-35761-6.00063-8', '10.1007/s40506-020-00219-4'}
 test3 = {'10.1136/bmj.282.6276.1595', '10.1136/bmj.2.5087.24', '10.1136/bmj.c5258', '10.1177/0961203311429318','10.1542/peds.2019-1791', '10.7326/m18-2101', '10.1007/s40506-020-00219'}
-test4={'10.1001/jama.2018.0708', '10.1001/jama.1990.03440120101046', '10.3390/vaccines7040201', '10.1007/s00134-019-05862-0', '10.1136/archdischild-2017-313855'}
-print(do_compute_impact_factor(data, test4, '2020'))
+test4={'10.1001/jama.2018.0708', '10.1001/jama.1990.03440120101046', '10.3390/vaccines7040201', '10.1007/s00134-019-05862-0', '10.1136/archdischild-2017-313855'} """
+test_DOIS = {'10.3390/vaccines7040201', '10.3389/fimmu.2018.02532', '10.1007/s00134-019-05862-0', '10.1016/b978-0-323-35761-6.00063-8', '10.1007/s40506-020-00219-4'}
+print(do_compute_impact_factor(data, test_DOIS, '2020'))
