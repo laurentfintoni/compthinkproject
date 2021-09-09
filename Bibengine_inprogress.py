@@ -253,9 +253,9 @@ def do_search(data, query, field):
         if field_match == None: 
             return 'The field input must be either citing, cited, creation or timespan \U0001F913.' 
     #lower case input for insensitive match
-    query = query.lower()  
-    #check for boolean in query 
-    if not re.search(r'(\snot\s|\sand\s|\sor\s)', query):
+    query = query.lower() 
+    #check for boolean in query  
+    if not re.search(r'(\snot\s|\sand\s|\sor\s|not\s|\snot|and\s|\sand|or\s|\sor)', query):
         #check if the query input contains either ? or * wildcards, if so initialize an empty query variable and iterate over the input query to look for wildcards and replace them with equivalent regex value
         if re.search(r'\*|\?', query):
             re_query = ''
@@ -273,20 +273,19 @@ def do_search(data, query, field):
             #iterate over data using input field as col, append results
             for row in data:
                 if re.search(re_query, row[field].lower()):
-                    result.append(row)  
-            if len(result) == 0:
-                return 'There are no results for your search, please try again \U0001F647'
+                    result.append(row) 
+            return result 
         #if no wildcard just process          
         else:
             result = []
             for row in data:
                 if re.fullmatch(query, row[field].lower()):
-                    result.append(row)  
-        return result
+                    result.append(row)
+            return result
     #if there is a boolean operator in query 
     else: 
         #split the query into tokens
-        if re.search(r'\snot\s|\sor\s|\sand\s', query):
+        if re.search(r'\snot\s|\sor\s|\sand\s', query): #IS THIS REDUNDANT??? TODO 
             query_words_list = query.split(" ")
         #check if the query contains more or less than three tokens
         if len(query_words_list) != 3:
@@ -304,7 +303,10 @@ def do_search(data, query, field):
                 return 'There are no results for your search, please try again \U0001F647'
             else:
                 term_2 = do_search(term_1, query_words_list[2],field)
-                return term_2
+                if len(term_2) == 0:
+                    return 'There are no results for your search, please try again \U0001F647'
+                else:
+                    return term_2
         #if operator is or run the function with first and second tokens, return error message if results are empty else concatenate 
         elif "or" in query_words_list:
             term_1 = do_search(data, str(query_words_list[0]), field)
@@ -346,30 +348,23 @@ def do_filter_by_value(data, query, field):
     #lowercase the query
     n_query = query.lower()
     #check for operators in query 
-    if not re.search(r'<\s|>\s|<=\s|>=\s|==\s|!=\s|and|or|not', n_query):
+    if not re.search(r'<\s|\s<|>\s|\s>|<=\s|\s<=|>=\s|\s>=|==\s|\s==|!=\s|\s!=|\sand\s|\sor\s|\snot\s', n_query):
         for row in data:
-            value = row[field]
-            #lowercase the search field 
-            n_value = value.lower()
-            #search for query in search field 
-            if re.search(n_query, n_value):
+            if re.search(n_query, row[field].lower()):
                 subcollection.append(row)
         if len(subcollection) == 0:
                 return 'There are no results for your search, please try again \U0001F647'
         else:
-            return [subcollection]
+            return subcollection
     #if there are operators in query
     else:
         # split the query into tokens
         spl_query = n_query.split(" ")
-        #check if the query contains more than three tokens
-        if len(spl_query) > 3:
+        #check if the query contains more than three tokens or just one token
+        if 2 < len(spl_query) > 3:
             return 'Your query must follow the following format: "<operator> <tokens>" for comparisons or "<tokens 1> <operator> <tokens 2>" for boolean searches. There appears to be too many tokens \U0001F645.'        
-        #check if the query contains more than three tokens
-        if len(spl_query) == 1:
-            return 'Your query must follow the following format: "<operator> <tokens>" for comparisons or "<tokens 1> <operator> <tokens 2>" for boolean searches. There appears to be only one token \U0001F645.'  
         #if query has two tokens 
-        if len(spl_query) == 2:
+        if len(spl_query) == 2: 
             #check that first token is a valid operator 
             if not re.fullmatch(r'<|>|<=|>=|==|!=', spl_query[0]):
                 return 'It looks like your first token is not a valid comparison operator \U0001F645.'
@@ -383,16 +378,14 @@ def do_filter_by_value(data, query, field):
                 v_query = spl_query[1]
             #search for query in data using operator library
             for row in data:
-                value = row[field] 
-                n_value = value.lower()
-                if co_ops(n_value, v_query):
+                if co_ops(row[field].lower(), v_query):
                     subcollection.append(row)
             if len(subcollection) == 0:
                 return 'There are no results for your search, please try again \U0001F647'
             else:
-                return [subcollection]
+                return subcollection
         #if query has three tokens    
-        if len(spl_query) == 3:
+        elif len(spl_query) == 3:
             #check that second token is a boolean
             if not re.match(r'and|or|not', spl_query[1]):
                 return 'Your query must follow the following format: "<tokens 1> <operator> <tokens 2>." The boolean operator seems to be in the wrong place \U0001F631.'
@@ -405,33 +398,27 @@ def do_filter_by_value(data, query, field):
             #if boolean is and look for both tokens in data 
             if spl_query[1] == 'and':
                 for row in data:
-                    value = row[field] 
-                    n_value = value.lower()
-                    if re.search(v1_query, n_value) and re.search(v2_query, n_value):
+                    if re.search(v1_query, row[field].lower()) and re.search(v2_query, row[field].lower()):
                         subcollection.append(row)
                 if len(subcollection) == 0:
                     return 'There are no results for your search, please try again \U0001F647'
                 else:
-                    return [subcollection]
+                    return subcollection
             #if boolean is or look for either token in data
             elif spl_query[1] == 'or':
                 for row in data:
-                    value = row[field] 
-                    n_value = value.lower()
-                    if re.search(v1_query, n_value) or re.search(v2_query, n_value):
+                    if re.search(v1_query, row[field].lower()) or re.search(v2_query, row[field].lower()):
                         subcollection.append(row)
                 if len(subcollection) == 0:
                     return 'There are no results for your search, please try again \U0001F647'
                 else:
-                    return [subcollection]
+                    return subcollection
             #if boolean is not look for only the first token in data
             elif spl_query[1] == 'not':
                 for row in data:
-                    value = row[field] 
-                    n_value = value.lower()
-                    if re.search(v1_query, n_value) and not re.search(v2_query, n_value):
+                    if re.search(v1_query, row[field].lower()) and not re.search(v2_query, row[field].lower()):
                         subcollection.append(row)
                 if len(subcollection) == 0:
                     return 'There are no results for your search, please try again \U0001F647'
                 else:
-                    return [subcollection]
+                    return subcollection
