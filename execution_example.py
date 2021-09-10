@@ -23,4 +23,4 @@ my_be = BibliometricEngine("citations_sample.csv")
 test_dois = {'10.3390/vaccines7040201', '10.3389/fimmu.2018.02532', '10.1007/s00134-019-05862-0', '10.1016/b978-0-323-35761-6.00063-8', '10.1007/s40506-020-00219-4'}
 
 #print(my_be.search('annur* and vir*logy', 'citing', None))
-print(my_be.search('ann*rev not vir*logy', 'citing', None))
+print(my_be.search('10* not 10*', 'citing', None))

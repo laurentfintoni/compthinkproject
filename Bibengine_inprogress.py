@@ -266,7 +266,7 @@ def do_search(data, query, field):
     #lower case input for insensitive match
     query = query.lower() 
     #check for boolean in query  
-    errormsg = 'oopsie'
+    errormsg = 'There are no results for your search, please try again \U0001F647'
     if not re.search(r'(\snot\s|\sand\s|\sor\s|not\s|\snot|and\s|\sand|or\s|\sor)', query):
         #check if the query input contains either ? or * wildcards, if so initialize an empty query variable and iterate over the input query to look for wildcards and replace them with equivalent regex value
         if re.search(r'\*|\?', query):
@@ -302,9 +302,7 @@ def do_search(data, query, field):
                 return result
     #if there is a boolean operator in query 
     else: 
-        #split the query into tokens
-        if re.search(r'\snot\s|\sor\s|\sand\s', query): #IS THIS REDUNDANT??? TODO 
-            query_words_list = query.split(" ")
+        query_words_list = query.split(" ")
         #check if the query contains more or less than three tokens
         if len(query_words_list) != 3:
             return 'Your query must follow the following format: "<tokens 1> <operator> <tokens 2>." There appears to be too many or too few tokens \U0001F645.'
@@ -330,7 +328,7 @@ def do_search(data, query, field):
             term_2 = do_search(data, str(query_words_list[2]), field)
             if term_2 == errormsg:
                 term_2 = []
-            elif len(term_1 + term_2) == 0:
+            if len(term_1 + term_2) == 0:
                 return 'There are no results for your search, please try again \U0001F647'
             else:
                 return term_1 + term_2
