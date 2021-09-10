@@ -85,8 +85,6 @@ def do_compute_impact_factor(data, dois, year):
                     citations_count +=1
     dois_not_in_cited = dois.difference(dois_in_cited)
     #return error if count is empty
-    print(dois_citations)
-    print(dois_not_in_cited)
     if citations_count == 0:
         return (f'For doi in "dois", there are no citations in {year} to compute the Impact Factor with \U0001F622.')
     else:

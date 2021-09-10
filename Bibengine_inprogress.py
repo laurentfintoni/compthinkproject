@@ -1,5 +1,6 @@
 #IMPORT SECTION
-import csv #to read the data
+import csv
+from os import error #to read the data
 import re #to use regex
 import pprint #to make things pretty because life is beautiful 
 import networkx as nx #to make graphs 
@@ -69,40 +70,50 @@ def do_compute_impact_factor(data, dois, year):
         return 'There are no input DOIS \U0001F645.'
     #create a variable to count citations 
     citations_count = 0 
+    #create a list to hold results of citation search
+    citation_results = []
+    #create set to hold found DOIs 
+    dois_cited = set()
     #look at all dict instances in list and DOIS in input
     for row in data: 
         for i in dois: 
-            #if a DOI in input and the year match in the respective column add a count
-            if i in row["cited"] and year in row["creation"]: 
-                citations_count +=1
+            #if DOI in cited add row to results, DOI to cited set
+            if i in row["cited"]:
+                citation_results.append(row)
+                dois_cited.add(row["cited"])
+            #if year matches the creation column add a count
+                if year in row["creation"]: 
+                    citations_count +=1
+    #create set to hold input DOIs with no citation
+    dois_not_cited = set()
+    dois_not_cited = dois.difference(dois_cited)
     #return error if count is empty 
     if citations_count == 0: 
         return 'There are no citations to compute the Impact Factor with \U0001F622.'
-    #create a variable to count published docs 
-    docs_published = 0 
-    #change year input to integer to create two new year variables for the preceding years, then change those back to strings for searching  
-    year_int = int(year) 
-    year_1 = str(year_int - 1) 
-    year_2 = str(year_int - 2)
-    #same as above but this time we look for matches between DOIs in citing and cited years        
-    for row in data: 
-        for i in dois:       
-            if i in row["citing"] and year_1 in row["citing_year"]:
-                docs_published +=1
-            if i in row["citing"] and year_2 in row["citing_year"]:
-                docs_published +=1
-            if i in row["cited"] and year_1 in row["cited_year"]:
-                docs_published +=1
-            if i in row["cited"] and year_2 in row["cited_year"]:
-                docs_published +=1
-    #return error if count is empty, also avoids ZeroDivisionError 
-    if docs_published == 0: 
-        return 'There are no published documents in the previous two years to compute the Impact Factor with \U0001F622.'
     else: 
-        #Calculate IF and round it up to 2 decimal points
-        impact_factor = round(citations_count / docs_published, 2)
-        #use formatted string literal to make the result pretty  
-        return (f'There were {citations_count} citations for all dois in {year}, {docs_published} documents published in the previous two years, and the impact factor is {impact_factor}.') 
+        #change year input to integer to create two new year variables for the preceding years, then change those back to strings for searching  
+        year_int = int(year) 
+        year_1 = str(year_int - 1) 
+        year_2 = str(year_int - 2)
+        #create a set to hold publishing results
+        published_dois = set()
+        #same as above but this time we look for matches between DOIs and citing/cited years within results subset        
+        for row in citation_results: 
+            if row["cited_year"] == year_1 or row["cited_year"] == year_2:
+                published_dois.add(row["cited"])
+        if len(dois_not_cited) > 0:
+            for row in data: 
+                for i in dois_not_cited:
+                    if i in row["citing"] and (row['citing_year'] == year_1 or row['citing_year'] == year_2):
+                        published_dois.add(row["citing"])
+        #return error if count is empty, also avoids ZeroDivisionError 
+        if len(published_dois) == 0: 
+            return 'There are no published documents in the previous two years to compute the Impact Factor with \U0001F622.'
+        else: 
+            #Calculate IF and round it up to 2 decimal points
+            impact_factor = round(citations_count / len(published_dois), 2)
+            #use formatted string literal to make the result pretty  
+            return (f'There were {citations_count} citations for all dois in {year}, {len(published_dois)} documents published in the previous two years, and the impact factor is {impact_factor}.') 
 
 #FUNCTION 3 (ENRICA)
 
@@ -255,6 +266,7 @@ def do_search(data, query, field):
     #lower case input for insensitive match
     query = query.lower() 
     #check for boolean in query  
+    errormsg = 'oopsie'
     if not re.search(r'(\snot\s|\sand\s|\sor\s|not\s|\snot|and\s|\sand|or\s|\sor)', query):
         #check if the query input contains either ? or * wildcards, if so initialize an empty query variable and iterate over the input query to look for wildcards and replace them with equivalent regex value
         if re.search(r'\*|\?', query):
@@ -273,15 +285,21 @@ def do_search(data, query, field):
             #iterate over data using input field as col, append results
             for row in data:
                 if re.search(re_query, row[field].lower()):
-                    result.append(row) 
-            return result 
+                    result.append(row)
+            if len(result) == 0:
+                return errormsg
+            else:   
+                return result 
         #if no wildcard just process          
         else:
             result = []
             for row in data:
                 if re.fullmatch(query, row[field].lower()):
                     result.append(row)
-            return result
+            if len(result) == 0:
+                return errormsg
+            else:
+                return result
     #if there is a boolean operator in query 
     else: 
         #split the query into tokens
@@ -299,26 +317,31 @@ def do_search(data, query, field):
         #if operator is and run the function with the first token and store it as a variable, else return an error message or continue with the second token and run the function using term1 as input instead of data, then return term2 variable 
         if "and" in query_words_list:
             term_1 = do_search(data, query_words_list[0],field)
-            if len(term_1) == 0:
+            if len(term_1) == 0 or term_1 == errormsg:
                 return 'There are no results for your search, please try again \U0001F647'
             else:
                 term_2 = do_search(term_1, query_words_list[2],field)
-                if len(term_2) == 0:
-                    return 'There are no results for your search, please try again \U0001F647'
-                else:
-                    return term_2
+                return term_2
         #if operator is or run the function with first and second tokens, return error message if results are empty else concatenate 
         elif "or" in query_words_list:
             term_1 = do_search(data, str(query_words_list[0]), field)
+            if term_1 == errormsg:
+                term_1 = []
             term_2 = do_search(data, str(query_words_list[2]), field)
-            if len(term_1 + term_2) == 0:
+            if term_2 == errormsg:
+                term_2 = []
+            elif len(term_1 + term_2) == 0:
                 return 'There are no results for your search, please try again \U0001F647'
             else:
                 return term_1 + term_2
         #if operator is not run the function with first and second tokens, then look for any instances of term2 results in term1 results and remove them
-        elif "not" in query_words_list:  
-            term_1 = do_search(data, str(query_words_list[0]), field)   
-            term_2 = do_search(data, str(query_words_list[2]), field)   
+        elif "not" in query_words_list:
+            term_1 = do_search(data, str(query_words_list[0]), field)
+            if term_1 == errormsg:
+                term_1 = []   
+            term_2 = do_search(data, str(query_words_list[2]), field)
+            if term_2 == errormsg:
+                term_2 = []   
             for i in term_2:
                 if i in term_1:
                     term_1.remove(i)
