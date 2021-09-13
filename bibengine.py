@@ -18,7 +18,7 @@
 # the particular functions implemented by a group. The 'my_test_group' module specified
 # here is just a placeholder, since it defines only the signature of the various
 # functions but it returns always None.
-from Bibengine_inprogress import *
+from zeroes_and_ones import *
 
 class BibliometricEngine(object):
     def __init__(self, citations_file_path):
