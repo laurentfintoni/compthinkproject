@@ -144,6 +144,8 @@ def do_compute_impact_factor(data, dois, year):
             #use formatted string literal to make the result pretty  
             return impact_factor
 
+
+'''
 #FUNCTION 3 (ENRICA)
 
 def do_get_co_citations(data, doi1, doi2):
@@ -203,6 +205,81 @@ def do_get_bibliographic_coupling(data, doi1, doi2):
     else:
         print(f'The total number of shared citations by the input documents is: {bibliographic_coupling}.')
         return bibliographic_coupling
+'''
+
+#FUNCTION 3 (ENRICA)
+
+def do_get_co_citations(data, doi1, doi2):
+    #set a variable co_citations to 0
+    co_citations = 0
+    # print error alert if doi inputs are not strings or are empty and return initial co_citations value
+    if type(doi1) is not str or doi1 == '':
+        print('The first doi input must be a string with at least one character \U0001F645.')
+    elif type(doi2) is not str or doi2 == '':
+        print('The second doi input must be a string with at least one character \U0001F645.')
+    #initialize an empty lists for doi1 citations and store them in list; initialize an empty set for dois citing doi1 and store them in set
+    else:
+        cited_doi1_sublist = []
+        citing_for_doi1 = set()
+        for row in data:
+            if row['cited'] == doi1:
+                cited_doi1_sublist.append(row)
+                citing_for_doi1.add(row['citing'])
+        #check for the citing_for_doi1 set lenght, if empty, print an alert and return the initial co-citations value; if not empty, check for the doi2
+        if len(citing_for_doi1) < 1:
+            print(f'According to the data, there are no citations for the fist input doi ({doi1}) to compute the co-citation(s) with \U0001F622')
+        else:
+            # initialize an empty lists for doi2 citations and store them in list; initialize an empty set for dois citing doi2 and store them in set
+            cited_doi2_sublist = []
+            citing_for_doi2 = set()
+            for row in data:
+                if row['cited'] == doi2:
+                    cited_doi2_sublist.append(row)
+                    citing_for_doi2.add(row['citing'])
+            # check for the citing_for_doi2 set lenght, if empty, print an alert and return the initial co-citations value; if not empty, compute co-citations
+            if len(citing_for_doi2) < 1:
+                print(f'According to the data, there are no citations for the second input doi ({doi2}) to compute the co-citation(s) with \U0001F622')
+            else:
+                co_citations = len(citing_for_doi1.intersection(citing_for_doi2))
+                print(f'The two input dois are cited together by n. {co_citations} other documents or doi(s).')
+    return co_citations
+
+#FUNCTION 4 (ENRICA)
+
+def do_get_bibliographic_coupling(data, doi1, doi2):
+    #set a variable bib_coupling to 0
+    bib_coupling = 0
+    # print error alert if doi inputs are not strings or are empty and return initial bib_coupling value
+    if type(doi1) is not str or doi1 == '':
+        print('The first doi input must be a string with at least one character \U0001F645.')
+    elif type(doi2) is not str or doi2 == '':
+        print('The second doi input must be a string with at least one character \U0001F645.')
+    #initialize an empty lists for doi1 citations and store them in list; initialize an empty set for dois cited by doi1 and store them in set
+    else:
+        citing_doi1_sublist = []
+        cited_by_doi1 = set()
+        for row in data:
+            if row['citing'] == doi1:
+                citing_doi1_sublist.append(row)
+                cited_by_doi1.add(row['cited'])
+        #check for the cited_by_doi1 set lenght, if empty, print an alert and return the initial bib_coupling value; if not empty, check for the doi2
+        if len(cited_by_doi1) < 1:
+            print(f'According to the data, there are no citations for the fist input doi ({doi1}) to compute the bibliographic coupling with\U0001F622')
+        else:
+            # initialize an empty lists for doi2 citations and store them in list; initialize an empty set for dois cited by doi2 and store them in set
+            citing_doi2_sublist = []
+            cited_by_doi2 = set()
+            for row in data:
+                if row['citing'] == doi2:
+                    citing_doi2_sublist.append(row)
+                    cited_by_doi2.add(row['cited'])
+            # check for the cited_by_doi2 set lenght, if empty, print an alert and return the initial bib_coupling value; if not empty, compute bib_coupling
+            if len(cited_by_doi2) < 1:
+                print(f'According to the data, there are no citations for the second input doi ({doi2}) to compute the bibliographic coupling with\U0001F622')
+            else:
+                bib_coupling = len(cited_by_doi1.intersection(cited_by_doi2))
+                print(f'The two input dois have both cited a total of n. {bib_coupling} same doi(s)')
+    return bib_coupling
 
 #FUNCTION 5 (CAMILLA)
 
