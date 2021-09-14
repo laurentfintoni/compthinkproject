@@ -3,7 +3,7 @@ import csv
 import re #to use regex
 import networkx as nx #to make graphs 
 import operator #to make comparisons easier 
-from datetime import datetime #to compute cited years
+from datetime import datetime, date #to compute cited years
 from dateutil.relativedelta import relativedelta
 from networkx.classes.digraph import DiGraph
 from networkx.classes.graph import Graph
@@ -22,8 +22,9 @@ def process_citations(citations_file_path):
         csvFile = csv.DictReader(file)
         for row in csvFile:
             matrix.append(row)
+            # add two extra-column for 'citing_year' and 'cited_year' with empty value to be filled by using dynamic programming approach
             row.update([('citing_year', ''), ('cited_year', '')])
-
+            # check for 'citing_year' value in doi_date_dict; if not already present, compute the calculation and store the result in doi_date_dict to be used later for same imput doi 
             citing_doi = row['citing']
             if citing_doi in doi_date_dict:
                 row['citing_year'] = doi_date_dict[citing_doi]
@@ -31,34 +32,55 @@ def process_citations(citations_file_path):
                 citing_date = row['creation']
                 row['citing_year'] = citing_date[0:4]
                 doi_date_dict[citing_doi] = row['citing_year']
-
+            # check for 'cited_year' value in doi_date_dict; if not already present, compute the calculation and store the result in doi_date_dict to be used later for same imput doi 
             cited_doi = row['cited']
             if cited_doi in doi_date_dict:
                 row['cited_year'] = doi_date_dict[cited_doi]
             else:
                 timespan_str = row['timespan']
                 # create a cited year key/value pair by using datetime computations
-                n_creation = row['creation']
-                while len(n_creation) < 10:
-                    n_creation = n_creation + '-01'
-                citing_n_date = datetime.strptime(n_creation, '%Y-%m-%d')
-                timespan_n = (re.split('[a-zA-Z]', timespan_str, 4)[1:-1])
+                
+                # we can use citing_date witouth assign new variable
+                #n_creation = row['creation']
+                #while len(n_creation) < 10:
+                #    n_creation = n_creation + '-01'
+                #citing_n_date = datetime.strptime(n_creation, '%Y-%m-%d')
+                #[or citing_n_date = datetime.strptime(creation, '%Y-%m-%d').date() #it compute less data (without time), as weel as ISOFORMAT]
+                #timespan_n = (re.split('[a-zA-Z]', timespan_str, 4)[1:-1]) #removed 4, just useful if full ISO duration format is used P(n)Y(n)M(n)DT(n)H(n)M(n)S
+                
+                #normalize the leght of creation to have an ISOformat date YYYY-MM-DD, when a group is lacking, it is assumed the values are 01
+                while len(citing_date) < 10:
+                    citing_date = citing_date + '-01'
+                #transform the ISOformat string in a date object
+                citing_n_date = date.fromisoformat(citing_date) 
+                #split the timespan string in a list of values for Y, M, D and assigne them to a relativedelta that is able to have values for yars and months instead of just dayes like for timedelta
+                timespan_n = (re.split('[P|Y|M|D]', timespan_str)[1:-1]) #removed all carachters and insert just the four used in timespan; \D not working with negative timespan
                 a_n = int(timespan_n[0])
-                delta_n = relativedelta(years=a_n)
-                if len(timespan_n) == 2:
-                    m_n = int(timespan_n[1])
-                    delta_n = relativedelta(years=a_n, months=m_n)
-                if len(timespan_n) == 3:
-                    m_n = int(timespan_n[1])
-                    g_n = int(timespan_n[2])
-                    delta_n = relativedelta(years=a_n, months=m_n, days=g_n)
+                    if len(timespan_n) == 1:
+                        delta_n = relativedelta(years=a_n)
+                    else:
+                        m_n = int(timespan_n[1])
+                        if len(timespan_n) == 2:
+                            delta_n = relativedelta(years=a_n, months=m_n)
+                        elif len(timespan_n) == 3:
+                            g_n = int(timespan_n[2])
+                            delta_n = relativedelta(years=a_n, months=m_n, days=g_n)
+                #take in consideration negative timespan and change the +/- of relativedelta
                 if timespan_str[0] == "-":  # just in case there is a negative timespan
-                    cited_n_date = citing_n_date + delta_n
-                else:
-                    cited_n_date = citing_n_date - delta_n
-                cited_year = (str(cited_n_date)[0:4])
+                    delta_n = delta_n*-1
+                    #cited_n_date = citing_n_date + delta_n
+                #else:
+                 #   cited_n_date = citing_n_date - delta_n
+                
+                #calculate the cited_n_date as date object, subtractig relativedelta from citing_n_date
+                cited_n_date = citing_n_date - delta_n
+                
+                #transform the data object in string and take in consideration just the first four carachters
+                #cited_year = (str(cited_n_date)[0:4])
+                cited_year = cited_n_date.strftime('%Y') #apparently the right way to transfor a dataobject to a string
                 row['cited_year'] = cited_year
     return matrix
+
 
 #FUNCTION 2 (LAURENT)
 
