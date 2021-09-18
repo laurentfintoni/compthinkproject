@@ -15,6 +15,8 @@
 
 # import the class 'BibliometricEngine' from the local file 'bibengine.py'
 from bibengine import BibliometricEngine
+import networkx as nx
+from networkx import MultiDiGraph, DiGraph
 
 # create a new object of the class 'BibliometricEngine' specifying the input CSV files to process
 my_be = BibliometricEngine("citations_sample.csv")
@@ -25,5 +27,8 @@ test_dois = {'10.3390/vaccines7040201', '10.3389/fimmu.2018.02532', '10.1007/s00
 #print(my_be.search('annur* and vir*logy', 'citing', None))
 #print(my_be.filter_by_value('> 1000000000', 'timespan', None))
 
-test_dump = my_be.search_by_prefix('annurev', True, None)
-print(my_be.get_bibliographic_coupling('10.1146/annurev-virology-092818-015515', '10.3390/vaccines7040201'))
+
+
+
+test = my_be.filter_by_value('> 2018', 'creation', None)
+print(my_be.search('10.3390/vaccines7040201', 'citing', test))
